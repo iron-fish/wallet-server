@@ -6,4 +6,4 @@
 
 - Install dependencies: `yarn`
 - Codegem protobuf models: `yarn build`
-- Start gRPC server: `yarn start
+- Start gRPC server: `yarn start`
