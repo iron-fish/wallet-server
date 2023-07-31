@@ -14,7 +14,7 @@ RUN npm install
 COPY . .
 
 # Build the app
-CMD ["npm", "run", "build"]
+RUN npm run build
 
 # Make port 50051 available to the outside 
 EXPOSE 50051
