@@ -1,4 +1,4 @@
-name: Create wallet-server Docker image
+name: main build and deploy
 
 on:
   push:
@@ -35,3 +35,23 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  Deploy:
+    name: Redeploy wallet server beanstalk environment
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Fetch the active version label
+        run: echo "VERSION_LABEL=$(aws elasticbeanstalk describe-environments --query 'Environments[?EnvironmentName==`demo-wallet-server`&&Status!=`Terminated`].VersionLabel' --output text)" >> $GITHUB_ENV
+
+      - name: Redeploy the environment's active version
+        run: |
+          echo "Version label: ${{ env.VERSION_LABEL }}"
+          aws elasticbeanstalk update-environment --environment-name demo-wallet-server --version-label ${{ env.VERSION_LABEL }}
