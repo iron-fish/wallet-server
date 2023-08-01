@@ -10,7 +10,7 @@ message ServerInfo {
  string nodeVersion = 4;
  string nodeStatus = 5;
  uint64 blockHeight = 6;
- bytes blockHash = 7;
+ string blockHash = 7;
 }
 
 service LightStreamer {
