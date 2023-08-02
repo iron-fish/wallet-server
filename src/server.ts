@@ -3,6 +3,9 @@ import { Server, ServerCredentials } from "@grpc/grpc-js";
 import { Health, HealthService } from "./services/Health";
 import { LightStreamer, LightStreamerService } from "./services/LightStreamer";
 import { logger } from "./utils";
+import { config } from "dotenv";
+
+config({ path: process.env['DOTENV_PATH'] || '.env' });
 
 const server = new Server({
   "grpc.max_receive_message_length": -1,
