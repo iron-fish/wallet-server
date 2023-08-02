@@ -12,8 +12,13 @@ export async function getIronFishClient(): Promise<RpcClient | null> {
   if (!sdk) {
     sdk = await IronfishSdk.init({
       configOverrides: {
-        rpcHttpHost: process.env['NODE_HOST'] || "localhost",
-        rpcTcpPort: Number(process.env['NODE_PORT']) || 8020
+        enableRpcTls: true,
+        enableRpcTcp: true,
+        rpcTcpHost: process.env['NODE_HOST'] || "localhost",
+        rpcTcpPort: Number(process.env['NODE_PORT']) || 8020,
+      },
+      internalOverrides: {
+        rpcAuthToken: process.env['NODE_AUTH_TOKEN'] || undefined,
       }
     });
   }
