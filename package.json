@@ -11,6 +11,7 @@
     "url": "git+https://github.com/iron-fish/ironfish.git"
   },
   "scripts": {
+    "dev": "nodemon --config ./nodemon.json --exec 'npm run build && npm run start'",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint --ext .ts .",
     "build": "node bin/proto && rimraf dist && tsc -b",
@@ -33,7 +34,7 @@
     "eslint-plugin-import": "2.27.5",
     "eslint-plugin-sonarjs": "0.19.0",
     "grpc-tools": "1.12.4",
-    "nodemon": "3.0.1",
+    "nodemon": "^3.0.1",
     "rimraf": "5.0.1",
     "ts-node": "10.9.1",
     "ts-proto": "1.155.1",

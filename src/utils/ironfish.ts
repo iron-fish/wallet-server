@@ -1,36 +1,84 @@
-import { IronfishSdk, RpcClient } from "@ironfish/sdk";
-import { logger } from "./logger";
+import { IronfishSdk, RpcTcpClient } from "@ironfish/sdk";
 
-let sdk: IronfishSdk | null = null;
-let rpcClient: RpcClient | null = null;
+type ClientParams = {
+  host: string;
+  port: number;
+  authToken: string;
+};
 
-export async function getIronFishClient(): Promise<RpcClient | null> {
-  if (rpcClient) {
-    return rpcClient;
+type ClientRegistry = Map<string, Map<string, RpcTcpClient>>;
+
+class IronFishClient {
+  private clientRegistry: ClientRegistry = new Map();
+  // private sdk: IronfishSdk | null = null;
+
+  constructor() {
+    // this.init();
   }
 
-  if (!sdk) {
-    sdk = await IronfishSdk.init({
-      configOverrides: {
-        enableRpcTls: true,
-        enableRpcTcp: true,
-        rpcTcpHost: process.env['NODE_HOST'] || "localhost",
-        rpcTcpPort: Number(process.env['NODE_PORT']) || 8020,
-      },
-      internalOverrides: {
-        rpcAuthToken: process.env['NODE_AUTH_TOKEN'] || undefined,
-      }
-    });
+  // private async init(
+  //   { host, port, authToken }: ClientParams = {
+  //     host: process.env["NODE_HOST"] ?? "localhost",
+  //     port: Number(process.env["NODE_PORT"] ?? 8020),
+  //     authToken: process.env["NODE_AUTH_TOKEN"] ?? "",
+  //   }
+  // ) {
+  //   this.sdk = await IronfishSdk.init({
+  //     configOverrides: {
+  //       enableRpcTls: true,
+  //       enableRpcTcp: true,
+  //       rpcTcpHost: host,
+  //       rpcTcpPort: port,
+  //     },
+  //     internalOverrides: {
+  //       rpcAuthToken: authToken,
+  //     },
+  //   });
+  // }
+
+  private getOrCreateClient({ host, port, authToken }: ClientParams) {
+    if (!this.clientRegistry.has(host)) {
+      this.clientRegistry.set(host, new Map());
+    }
+
+    const hostMap = this.clientRegistry.get(host);
+
+    if (!hostMap) {
+      throw new Error("Host map not found");
+    }
+
+    const storedClient = hostMap.get(port.toString());
+
+    if (storedClient) {
+      return storedClient;
+    }
+
+    const client = new RpcTcpClient(host, port, undefined, authToken);
+
+    hostMap.set(port.toString(), client);
+
+    return client;
   }
 
-  try {
-    rpcClient = await sdk.connectRpc(false, true);
-  } catch (err) {
-    // Todo:
-    // - Add retry logic
-    // - Add error handling
-    logger.error("Error connecting to IronFish RPC", err);
-  }
+  async getClient(
+    { host, port, authToken }: ClientParams = {
+      host: process.env["NODE_HOST"] ?? "localhost",
+      port: Number(process.env["NODE_PORT"] ?? 8020),
+      authToken: process.env["NODE_AUTH_TOKEN"] ?? "",
+    }
+  ) {
+    await IronfishSdk.init();
 
-  return rpcClient;
+    const client = this.getOrCreateClient({ host, port, authToken });
+
+    if (client.isConnected) {
+      return client;
+    }
+
+    await client.connect();
+
+    return client;
+  }
 }
+
+export const ifClient = new IronFishClient();

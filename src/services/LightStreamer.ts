@@ -5,7 +5,7 @@ import {
   ServerInfo,
   LightStreamerService,
 } from "../models/lightstreamer";
-import { getIronFishClient } from "../utils/ironfish";
+import { ifClient } from "../utils/ironfish";
 
 class LightStreamer implements LightStreamerServer {
   [method: string]: UntypedHandleCall;
@@ -14,8 +14,8 @@ class LightStreamer implements LightStreamerServer {
     _,
     callback
   ) => {
-    const rpcClient = await getIronFishClient();
-    const nodeStatus = await rpcClient?.node.getStatus();
+    const tcpClient = await ifClient.getClient();
+    const nodeStatus = await tcpClient.node.getStatus();
 
     callback(
       null,
