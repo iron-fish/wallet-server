@@ -15,3 +15,13 @@ client.getServerInfo(Empty, (error, response) => {
 
   console.info(response);
 });
+
+client.getBlock({ sequence: 5 }, (error, response) => {
+  if (error) {
+    console.error(error);
+
+    process.exit(1);
+  }
+
+  console.info(response);
+})
