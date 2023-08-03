@@ -20,7 +20,7 @@ const healthStatus: Map<ServiceNames, HealthCheckResponse_ServingStatus> =
   ]);
 
 function isValidName(name: string): name is ServiceNames {
-  return (healthStatus as Map<string, any>).has(name);
+  return (healthStatus as Map<string, unknown>).has(name);
 }
 
 /**
@@ -32,7 +32,7 @@ class Health implements HealthServer {
 
   public check: handleUnaryCall<HealthCheckRequest, HealthCheckResponse> = (
     call,
-    callback
+    callback,
   ) => {
     const { service } = call.request;
     logger.info("healthCheck", service);
@@ -44,7 +44,7 @@ class Health implements HealthServer {
     if (!serviceStatus) {
       return callback(
         new ServiceError(status.NOT_FOUND, "NotFoundService"),
-        null
+        null,
       );
     }
 
