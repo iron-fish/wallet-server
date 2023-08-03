@@ -3,7 +3,7 @@ import { Empty, LightStreamerClient } from "../models/lightstreamer";
 
 const client = new LightStreamerClient(
   "localhost:50051",
-  credentials.createInsecure()
+  credentials.createInsecure(),
 );
 
 client.getServerInfo(Empty, (error, response) => {

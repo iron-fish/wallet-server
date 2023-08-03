@@ -24,5 +24,5 @@ server.bindAsync(
 
     logger.info(`gRPC:Server:${bindPort}`, new Date().toLocaleString());
     server.start();
-  }
+  },
 );

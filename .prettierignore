@@ -2,3 +2,9 @@
 dist
 node_modules
 src/models
+
+# Ignore github actions
+.github/workflows
+
+# File types
+**/*.json

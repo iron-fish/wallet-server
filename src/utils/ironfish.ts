@@ -45,7 +45,7 @@ class IronFishClient {
       },
     });
 
-    let client = await sdk.connectRpc(false, true);
+    const client = await sdk.connectRpc(false, true);
 
     if (!client) {
       // Todo:
