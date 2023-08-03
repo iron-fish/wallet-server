@@ -4,18 +4,46 @@ import {
   LightStreamerServer,
   ServerInfo,
   LightStreamerService,
+  LightBlock,
+  BlockID,
 } from "../models/lightstreamer";
 import { ifClient } from "../utils/ironfish";
+import { lightBlock } from "../utils/light_block";
 
 class LightStreamer implements LightStreamerServer {
   [method: string]: UntypedHandleCall;
+  
+  public getBlock: handleUnaryCall<BlockID, LightBlock> = async (
+    call,
+    callback
+  ) => {
+    let err = null
+    if (!call.request.hash && !call.request.sequence) {
+      err = new Error("Either hash or sequence must be provided")
+    }
 
+    const getBlockParams = call.request.hash 
+      ? {hash: call.request.hash.toString('hex')} 
+      : {sequence: call.request.sequence}
+    const rpcClient = await ifClient.getClient();
+      // this line will change to Cache.getBlock once cache is implemented
+    const response = await rpcClient?.chain.getBlock(getBlockParams);
+    if(response === undefined) {
+      err = new Error("Block not found")
+    }
+    
+    callback(
+      err,
+      response ? lightBlock(response.content) : null
+    );
+  };
+  
   public getServerInfo: handleUnaryCall<Empty, ServerInfo> = async (
     _,
     callback,
   ) => {
-    const tcpClient = await ifClient.getClient();
-    const nodeStatus = await tcpClient.node.getStatus();
+    const rpcClient = await ifClient.getClient();
+    const nodeStatus = await rpcClient.node.getStatus();
 
     callback(
       null,
