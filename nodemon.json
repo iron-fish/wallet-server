@@ -1,4 +1,12 @@
 {
   "verbose": false,
-  "ignore": ["dist/*", "src/models/*"]
+  "ext": "js,mjs,cjs,json,ts,tsx",
+  "watch": [
+    "protos/",
+    "src/"
+  ],
+  "ignore": [
+    "dist/",
+    "src/models/"
+  ]
 }

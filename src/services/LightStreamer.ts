@@ -15,7 +15,7 @@ class LightStreamer implements LightStreamerServer {
     callback
   ) => {
     const tcpClient = await ifClient.getClient();
-    const nodeStatus = await tcpClient.node.getStatus();
+    const nodeStatus = await tcpClient?.node.getStatus();
 
     callback(
       null,

@@ -1,4 +1,5 @@
-import { IronfishSdk, RpcTcpClient } from "@ironfish/sdk";
+import { IronfishSdk, RpcClient } from "@ironfish/sdk";
+import { logger } from "./logger";
 
 type ClientParams = {
   host: string;
@@ -6,59 +7,14 @@ type ClientParams = {
   authToken: string;
 };
 
-type ClientRegistry = Map<string, Map<string, RpcTcpClient>>;
-
 class IronFishClient {
-  private clientRegistry: ClientRegistry = new Map();
-  // private sdk: IronfishSdk | null = null;
+  private sdk: IronfishSdk | null = null;
+  private client: RpcClient | null = null;
+  private clientAddress: string | null = null;
 
-  constructor() {
-    // this.init();
-  }
+  constructor() {}
 
-  // private async init(
-  //   { host, port, authToken }: ClientParams = {
-  //     host: process.env["NODE_HOST"] ?? "localhost",
-  //     port: Number(process.env["NODE_PORT"] ?? 8020),
-  //     authToken: process.env["NODE_AUTH_TOKEN"] ?? "",
-  //   }
-  // ) {
-  //   this.sdk = await IronfishSdk.init({
-  //     configOverrides: {
-  //       enableRpcTls: true,
-  //       enableRpcTcp: true,
-  //       rpcTcpHost: host,
-  //       rpcTcpPort: port,
-  //     },
-  //     internalOverrides: {
-  //       rpcAuthToken: authToken,
-  //     },
-  //   });
-  // }
-
-  private getOrCreateClient({ host, port, authToken }: ClientParams) {
-    if (!this.clientRegistry.has(host)) {
-      this.clientRegistry.set(host, new Map());
-    }
-
-    const hostMap = this.clientRegistry.get(host);
-
-    if (!hostMap) {
-      throw new Error("Host map not found");
-    }
-
-    const storedClient = hostMap.get(port.toString());
-
-    if (storedClient) {
-      return storedClient;
-    }
-
-    const client = new RpcTcpClient(host, port, undefined, authToken);
-
-    hostMap.set(port.toString(), client);
-
-    return client;
-  }
+  async updateClient() {}
 
   async getClient(
     { host, port, authToken }: ClientParams = {
@@ -67,17 +23,42 @@ class IronFishClient {
       authToken: process.env["NODE_AUTH_TOKEN"] ?? "",
     }
   ) {
-    await IronfishSdk.init();
+    const clientAddress = `${host}:${port}`;
 
-    const client = this.getOrCreateClient({ host, port, authToken });
-
-    if (client.isConnected) {
-      return client;
+    if (this.clientAddress !== clientAddress) {
+      this.client = null;
+      this.sdk = null;
+      this.clientAddress = clientAddress;
     }
 
-    await client.connect();
+    if (this.client) {
+      return this.client;
+    }
 
-    return client;
+    if (!this.sdk) {
+      this.sdk = await IronfishSdk.init({
+        configOverrides: {
+          enableRpcTls: true,
+          enableRpcTcp: true,
+          rpcTcpHost: host,
+          rpcTcpPort: port,
+        },
+        internalOverrides: {
+          rpcAuthToken: authToken,
+        },
+      });
+    }
+
+    try {
+      this.client = await this.sdk.connectRpc(false, true);
+    } catch (err) {
+      // Todo:
+      // - Add retry logic
+      // - Add error handling
+      logger.error("Error connecting to IronFish RPC", err);
+    }
+
+    return this.client;
   }
 }
 
