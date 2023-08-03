@@ -8,13 +8,9 @@ type ClientParams = {
 };
 
 class IronFishClient {
-  private sdk: IronfishSdk | null = null;
-  private client: RpcClient | null = null;
-  private clientAddress: string | null = null;
+  private clientRegistry: Map<string, RpcClient> = new Map();
 
   constructor() {}
-
-  async updateClient() {}
 
   async getClient(
     { host, port, authToken }: ClientParams = {
@@ -24,41 +20,38 @@ class IronFishClient {
     },
   ) {
     const clientAddress = `${host}:${port}`;
+    const storedClient = this.clientRegistry.get(clientAddress);
 
-    if (this.clientAddress !== clientAddress) {
-      this.client = null;
-      this.sdk = null;
-      this.clientAddress = clientAddress;
+    if (storedClient) {
+      return storedClient;
     }
 
-    if (this.client) {
-      return this.client;
-    }
+    const sdk = await IronfishSdk.init({
+      configOverrides: {
+        enableRpcTls: true,
+        enableRpcTcp: true,
+        rpcTcpHost: host,
+        rpcTcpPort: port,
+      },
+      internalOverrides: {
+        rpcAuthToken: authToken,
+      },
+    });
 
-    if (!this.sdk) {
-      this.sdk = await IronfishSdk.init({
-        configOverrides: {
-          enableRpcTls: true,
-          enableRpcTcp: true,
-          rpcTcpHost: host,
-          rpcTcpPort: port,
-        },
-        internalOverrides: {
-          rpcAuthToken: authToken,
-        },
-      });
-    }
+    let client = await sdk.connectRpc(false, true);
 
-    try {
-      this.client = await this.sdk.connectRpc(false, true);
-    } catch (err) {
+    if (!client) {
       // Todo:
       // - Add retry logic
       // - Add error handling
-      logger.error("Error connecting to IronFish RPC", err);
+      const error = new Error(
+        `Unable to connect to IronFish RPC at ${clientAddress}`,
+      );
+      logger.error(error.message);
+      throw error;
     }
 
-    return this.client;
+    return client;
   }
 }
 

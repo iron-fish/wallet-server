@@ -1,5 +1,6 @@
 {
   "verbose": false,
+  "delay": 1500,
   "ext": "js,mjs,cjs,json,ts,tsx",
   "watch": [
     "protos/",
