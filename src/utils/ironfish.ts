@@ -21,7 +21,7 @@ class IronFishClient {
       host: process.env["NODE_HOST"] ?? "localhost",
       port: Number(process.env["NODE_PORT"] ?? 8020),
       authToken: process.env["NODE_AUTH_TOKEN"] ?? "",
-    }
+    },
   ) {
     const clientAddress = `${host}:${port}`;
 
