@@ -1,36 +1,65 @@
 import { IronfishSdk, RpcClient } from "@ironfish/sdk";
 import { logger } from "./logger";
 
-let sdk: IronfishSdk | null = null;
-let rpcClient: RpcClient | null = null;
+type ClientParams = {
+  host: string;
+  port: number;
+  authToken: string;
+};
 
-export async function getIronFishClient(): Promise<RpcClient | null> {
-  if (rpcClient) {
-    return rpcClient;
+class IronFishClient {
+  private static isInitialized = false;
+  private clientRegistry: Map<string, RpcClient> = new Map();
+
+  constructor() {
+    if (IronFishClient.isInitialized) {
+      throw new Error("IronFishClient is a singleton class");
+    }
+
+    IronFishClient.isInitialized = true;
   }
 
-  if (!sdk) {
-    sdk = await IronfishSdk.init({
+  async getClient(
+    { host, port, authToken }: ClientParams = {
+      host: process.env["NODE_HOST"] ?? "localhost",
+      port: Number(process.env["NODE_PORT"] ?? 8020),
+      authToken: process.env["NODE_AUTH_TOKEN"] ?? "",
+    },
+  ) {
+    const clientAddress = `${host}:${port}`;
+    const storedClient = this.clientRegistry.get(clientAddress);
+
+    if (storedClient) {
+      return storedClient;
+    }
+
+    const sdk = await IronfishSdk.init({
       configOverrides: {
         enableRpcTls: true,
         enableRpcTcp: true,
-        rpcTcpHost: process.env['NODE_HOST'] || "localhost",
-        rpcTcpPort: Number(process.env['NODE_PORT']) || 8020,
+        rpcTcpHost: host,
+        rpcTcpPort: port,
       },
       internalOverrides: {
-        rpcAuthToken: process.env['NODE_AUTH_TOKEN'] || undefined,
-      }
+        rpcAuthToken: authToken,
+      },
     });
-  }
 
-  try {
-    rpcClient = await sdk.connectRpc(false, true);
-  } catch (err) {
-    // Todo:
-    // - Add retry logic
-    // - Add error handling
-    logger.error("Error connecting to IronFish RPC", err);
-  }
+    let client = await sdk.connectRpc(false, true);
 
-  return rpcClient;
+    if (!client) {
+      // Todo:
+      // - Add retry logic
+      // - Add error handling
+      const error = new Error(
+        `Unable to connect to IronFish RPC at ${clientAddress}`,
+      );
+      logger.error(error.message);
+      throw error;
+    }
+
+    return client;
+  }
 }
+
+export const ifClient = new IronFishClient();

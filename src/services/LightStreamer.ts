@@ -5,17 +5,17 @@ import {
   ServerInfo,
   LightStreamerService,
 } from "../models/lightstreamer";
-import { getIronFishClient } from "../utils/ironfish";
+import { ifClient } from "../utils/ironfish";
 
 class LightStreamer implements LightStreamerServer {
   [method: string]: UntypedHandleCall;
 
   public getServerInfo: handleUnaryCall<Empty, ServerInfo> = async (
     _,
-    callback
+    callback,
   ) => {
-    const rpcClient = await getIronFishClient();
-    const nodeStatus = await rpcClient?.node.getStatus();
+    const tcpClient = await ifClient.getClient();
+    const nodeStatus = await tcpClient.node.getStatus();
 
     callback(
       null,
@@ -27,7 +27,7 @@ class LightStreamer implements LightStreamerServer {
         nodeStatus: nodeStatus?.content.node.status ?? "",
         blockHeight: nodeStatus?.content.blockchain.head.sequence ?? 0,
         blockHash: nodeStatus?.content.blockchain.head.hash ?? "",
-      })
+      }),
     );
   };
 }
