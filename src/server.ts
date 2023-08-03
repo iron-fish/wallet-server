@@ -15,7 +15,7 @@ const server = new Server({
 server.addService(HealthService, new Health());
 server.addService(LightStreamerService, new LightStreamer());
 server.bindAsync(
-  "0.0.0.0:50051",
+    "0.0.0.0:50051",
   ServerCredentials.createInsecure(),
   (err: Error | null, bindPort: number) => {
     if (err) {
