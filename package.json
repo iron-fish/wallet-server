@@ -14,6 +14,7 @@
     "dev": "nodemon --config ./nodemon.json --exec 'npm run build && npm run start'",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint --ext .ts .",
+    "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\"",
     "build": "node bin/proto && rimraf dist && tsc -b",
     "start": "node dist/server",
     "client": "node dist/client",
