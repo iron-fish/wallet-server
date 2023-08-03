@@ -641,7 +641,7 @@
 
 "@types/leveldown@^4.0.3":
   version "4.0.3"
-  resolved "https://registry.npmjs.org/@types/leveldown/-/leveldown-4.0.3.tgz#4b868fd747808d378df6ffb27de7f889cae46aad"
+  resolved "https://registry.yarnpkg.com/@types/leveldown/-/leveldown-4.0.3.tgz#4b868fd747808d378df6ffb27de7f889cae46aad"
   integrity sha512-fzIXOuUCSZQKkRadWhURwu6mMYbfqi/nRDA+yBwz8kj7AK/L7L//u6A0MqSv0gsilzo7N/5+FlZOx8G6m03EVQ==
   dependencies:
     "@types/abstract-leveldown" "*"
@@ -649,7 +649,7 @@
 
 "@types/levelup@^5.1.2":
   version "5.1.2"
-  resolved "https://registry.npmjs.org/@types/levelup/-/levelup-5.1.2.tgz#3b987fe66c95871dc97e74f0bce5b2eb91140782"
+  resolved "https://registry.yarnpkg.com/@types/levelup/-/levelup-5.1.2.tgz#3b987fe66c95871dc97e74f0bce5b2eb91140782"
   integrity sha512-JhCKONvFg2rEbsyyCCRkiPF03tMV1NyBXER4iXKBemgjwS4+SF6HGNuL4cfq6ueM6Yc+4ZbwJnU/5v6q3ZziUQ==
   dependencies:
     "@types/abstract-leveldown" "*"
