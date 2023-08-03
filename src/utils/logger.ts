@@ -14,7 +14,7 @@ export class Logger {
 
   public info(...args: Parameter): void {
     args.push(`- ${this.trace()}`);
-    console.info(...args);
+      console.info(...args);
   }
 
   public warn(...args: Parameter): void {
