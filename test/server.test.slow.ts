@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { credentials } from "@grpc/grpc-js";
 import {
+  BlockID,
   Empty,
   LightBlock,
   LightStreamerClient,
@@ -89,5 +90,19 @@ describe("LightStreamerServer", () => {
       },
     );
     expect(uncachedResponse).toBeDefined();
+  });
+
+  it("getLatestBlock gets head from node", async () => {
+    const response = await new Promise<BlockID>((resolve, reject) => {
+      client.getLatestBlock(Empty, (err, response) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(response);
+      });
+    });
+
+    expect(response.hash).toEqual(expect.any(Buffer));
+    expect(response.sequence).toBeGreaterThan(1);
   });
 });
