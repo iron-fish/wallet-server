@@ -8,9 +8,16 @@ type ClientParams = {
 };
 
 class IronFishClient {
+  private static isInitialized = false;
   private clientRegistry: Map<string, RpcClient> = new Map();
 
-  constructor() {}
+  constructor() {
+    if (IronFishClient.isInitialized) {
+      throw new Error("IronFishClient is a singleton class");
+    }
+
+    IronFishClient.isInitialized = true;
+  }
 
   async getClient(
     { host, port, authToken }: ClientParams = {
