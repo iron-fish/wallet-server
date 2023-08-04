@@ -6,8 +6,9 @@ import {
   HealthCheckRequest,
   HealthService,
   HealthServer,
-} from "../models/health";
-import { logger, ServiceError } from "../utils";
+} from "@/models/health";
+import { logger } from "@/utils/logger";
+import { ServiceError } from "@/utils/error";
 import type { ServicesMap } from "./types";
 
 type ServiceNames = "" | keyof ServicesMap;
