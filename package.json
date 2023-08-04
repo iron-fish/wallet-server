@@ -14,6 +14,8 @@
     "dev": "nodemon --config ./nodemon.json --exec 'yarn build && yarn start'",
     "lint": "eslint --ext .ts .",
     "test": "yarn prebuild && vitest run",
+    "test-unit": "yarn prebuild && vitest run --config ./vitest.unit.ts",
+    "test-integration": "yarn prebuild && vitest run --config ./vitest.integration.ts",
     "format": "prettier . --write",
     "prebuild": "node bin/proto && rimraf dist",
     "build": "yarn prebuild && tsc -b && tsc-alias -p tsconfig.json",
