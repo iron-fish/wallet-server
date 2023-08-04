@@ -24,4 +24,4 @@ client.getBlock({ sequence: 5 }, (error, response) => {
   }
 
   console.info(response);
-})
+});

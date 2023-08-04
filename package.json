@@ -11,11 +11,12 @@
     "url": "git+https://github.com/iron-fish/ironfish.git"
   },
   "scripts": {
-    "dev": "nodemon --config ./nodemon.json --exec 'npm run build && npm run start'",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon --config ./nodemon.json --exec 'yarn build && yarn start'",
     "lint": "eslint --ext .ts .",
+    "test": "yarn prebuild && vitest run",
     "format": "prettier . --write",
-    "build": "node bin/proto && rimraf dist && tsc -b",
+    "prebuild": "node bin/proto && rimraf dist",
+    "build": "yarn prebuild && tsc -b && tsc-alias -p tsconfig.json",
     "start": "node dist/server",
     "client": "node dist/client",
     "health": "node dist/health",
@@ -41,7 +42,9 @@
     "rimraf": "5.0.1",
     "ts-node": "10.9.1",
     "ts-proto": "1.155.1",
-    "typescript": "5.1.6"
+    "tsc-alias": "^1.8.7",
+    "typescript": "5.1.6",
+    "vitest": "^0.34.1"
   },
   "dependencies": {
     "source-map-support": "0.5.21"

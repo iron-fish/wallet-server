@@ -5,7 +5,7 @@ export type Parameter = [unknown?, ...unknown[]];
 
 export class Logger {
   private readonly rootDir: string = dirname(
-    (<NodeModule>require.main).filename,
+    (<NodeModule>require.main)?.filename ?? "",
   );
 
   constructor() {

@@ -5,7 +5,7 @@ import { LightStreamer, LightStreamerService } from "./services/LightStreamer";
 import { logger } from "./utils";
 import { config } from "dotenv";
 
-config({ path: process.env['DOTENV_PATH']} || '.env');
+config({ path: process.env["DOTENV_PATH"] } || ".env");
 
 const server = new Server({
   "grpc.max_receive_message_length": -1,
@@ -15,7 +15,7 @@ const server = new Server({
 server.addService(HealthService, new Health());
 server.addService(LightStreamerService, new LightStreamer());
 server.bindAsync(
-  "0.0.0.0:50051",
+  `0.0.0.0:${process.env["GRPC_SERVER_PORT"] || 50051}`,
   ServerCredentials.createInsecure(),
   (err: Error | null, bindPort: number) => {
     if (err) {
