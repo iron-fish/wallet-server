@@ -1,4 +1,4 @@
-import { UserConfig, defineConfig } from "vitest/config";
+import { UserConfig } from "vitest/config";
 
 export const baseConfig: UserConfig["test"] = {
   include: ["**/*.{test,test.slow}.?(c|m)[jt]s?(x)"],
@@ -7,9 +7,3 @@ export const baseConfig: UserConfig["test"] = {
     "@": "./src",
   },
 };
-
-export default defineConfig({
-  test: {
-    ...baseConfig,
-  },
-});
