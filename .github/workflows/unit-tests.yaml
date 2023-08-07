@@ -4,12 +4,18 @@ on:
   pull_request:
     branches:
       - main
+      - tests-on-ci
 
 jobs:
   test:
     runs-on: ubuntu-latest
 
     steps:
+      # - name: Setup tmate session
+      #   uses: mxschmitt/action-tmate@v3
+      #   with:
+      #     detached: true
+
       - name: Checkout code
         uses: actions/checkout@v2
 
@@ -19,7 +25,7 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: npm install && npm install @ironfish/rust-nodejs-linux-x64-gnu
+        run: npm install
 
       - name: Run tests
         run: npm run test-unit
