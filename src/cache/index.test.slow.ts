@@ -1,7 +1,7 @@
 import { expect, it, describe } from "vitest";
 import { lightBlockCache } from ".";
 
-function delay(ms = 5000) {
+function delay(ms = 3000) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 

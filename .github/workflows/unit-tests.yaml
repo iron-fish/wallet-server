@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -19,7 +19,7 @@ jobs:
           node-version: '16'
 
       - name: Install dependencies
-        run: npm install
+        run: npm install && npm install @ironfish/rust-nodejs-linux-x64-gnu
 
       - name: Run tests
         run: npm run test-unit
