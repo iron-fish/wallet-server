@@ -1,13 +1,14 @@
-import { describe } from "node:test";
-import { expect, it } from "vitest";
+import { expect, it, describe } from "vitest";
 import { lightBlockCache } from ".";
+
+function delay(ms = 3000) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 describe("LightBlockCache creating cache", () => {
   it("creating the cache adds blocks", async () => {
-    const timeout = new Promise((resolve) => setTimeout(resolve, 5000));
     const cacheBlocks = lightBlockCache.cacheBlocks();
-    await Promise.race([cacheBlocks, timeout]);
-
+    await Promise.race([cacheBlocks, delay()]);
     const head = await lightBlockCache.get("head");
     const block = await lightBlockCache.getBlockByHash(head!.toString());
     expect(block).toHaveProperty("protoVersion");

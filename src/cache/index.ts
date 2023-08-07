@@ -7,15 +7,29 @@ import { ifClient } from "../utils/ironfish";
 import { lightBlock } from "../utils/light_block";
 import { LightBlock } from "../models/lightstreamer";
 
+function getCachePath(): string {
+  if (process.env["CACHE_PATH"] && process.env["CACHE_FOLDER"]) {
+    console.warn(
+      "Both CACHE_PATH and CACHE_FOLDER are set. CACHE_FOLDER will be ignored.",
+    );
+  }
+
+  if (process.env["CACHE_PATH"]) {
+    return process.env["CACHE_PATH"];
+  }
+
+  const folderName = process.env["CACHE_FOLDER"] ?? "block-cache";
+
+  return path.join(__dirname, folderName);
+}
+
 class LightBlockCache {
   private db: LevelUp;
   private cacheDir: string;
 
-  constructor(
-    cacheDir: string = process.env["CACHE_PATH"] ||
-      path.join(__dirname, "block-cache"),
-  ) {
-    this.cacheDir = cacheDir;
+  constructor() {
+    this.cacheDir = getCachePath();
+
     if (!fs.existsSync(this.cacheDir)) {
       fs.mkdirSync(this.cacheDir);
     }
