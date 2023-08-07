@@ -62,9 +62,9 @@ class LightBlockCache {
   async get(key: string): Promise<Uint8Array | null> {
     try {
       const data = await this.db.get(key);
-      return Promise.resolve(data);
+      return data;
     } catch (e) {
-      return Promise.resolve(null);
+      return null;
     }
   }
 
