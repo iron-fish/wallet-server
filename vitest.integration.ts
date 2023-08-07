@@ -5,5 +5,6 @@ export default defineConfig({
   test: {
     ...baseConfig,
     include: ["**/*.test.slow.?(c|m)[jt]s?(x)"],
+    testTimeout: 60000,
   },
 });
