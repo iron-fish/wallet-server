@@ -19,7 +19,7 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: npm install && npm install @ironfish/rust-nodejs-linux-x64-gnu
+        run: npm install
 
       - name: Run tests
         run: npm run test-unit
