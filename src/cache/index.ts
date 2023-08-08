@@ -92,6 +92,10 @@ class LightBlockCache {
   async close(): Promise<void> {
     await this.db.close();
   }
+
+  async clear(): Promise<void> {
+    await this.db.clear();
+  }
 }
 
 export const lightBlockCache = new LightBlockCache();

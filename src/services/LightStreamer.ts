@@ -1,4 +1,8 @@
-import { status, UntypedHandleCall } from "@grpc/grpc-js";
+import {
+  status,
+  handleServerStreamingCall,
+  UntypedHandleCall,
+} from "@grpc/grpc-js";
 import {
   Empty,
   LightStreamerServer,
@@ -6,6 +10,7 @@ import {
   LightStreamerService,
   LightBlock,
   BlockID,
+  BlockRange,
 } from "@/models/lightstreamer";
 import { ifClient } from "@/utils/ironfish";
 import { lightBlock } from "@/utils/lightBlock";
@@ -60,7 +65,54 @@ class LightStreamer implements LightStreamerServer {
     callback(null, lightBlock(response.content));
   });
 
-  public getServerInfo = handle<Empty, ServerInfo>(async (_, callback) => {
+  public getBlockRange: handleServerStreamingCall<BlockRange, LightBlock> =
+    async (call) => {
+      if (!call.request.start?.sequence || !call.request.end?.sequence) {
+        call.emit("error", {
+          code: status.INVALID_ARGUMENT,
+          details: "Must provide sequence for start and end",
+        });
+        call.end();
+        return;
+      }
+      if (call.request.start.sequence >= call.request.end.sequence) {
+        call.emit("error", {
+          code: status.INVALID_ARGUMENT,
+          details: "End sequence must be greater than start sequence",
+        });
+        call.end();
+        return;
+      }
+      try {
+        for (
+          let i = call.request.start.sequence;
+          i <= call.request.end.sequence;
+          i++
+        ) {
+          let block = await lightBlockCache.getBlockBySequence(i);
+          if (block) {
+            call.write(block);
+            continue;
+          }
+          // fallback to rpc
+          const rpcClient = await ifClient.getClient();
+          const response = await rpcClient.chain.getBlock({ sequence: i });
+          block = lightBlock(response.content);
+          call.write(block);
+        }
+      } catch (e) {
+        call.emit("error", {
+          code: status.INTERNAL,
+          details: (e as Error).message,
+        });
+      }
+      call.end();
+    };
+
+  public getServerInfo = handle<Empty, ServerInfo>( async (
+    _,
+    callback,
+  ) => {
     const rpcClient = await ifClient.getClient();
     const nodeStatus = await rpcClient.node.getStatus();
 
