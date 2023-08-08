@@ -19,8 +19,7 @@ function getCachePath(): string {
   }
 
   const folderName = process.env["CACHE_FOLDER"] ?? "block-cache";
-
-  return path.join(__dirname, folderName);
+  return path.join(".", folderName);
 }
 
 class LightBlockCache {
@@ -82,7 +81,7 @@ class LightBlockCache {
     }
   }
 
-  async put(key: string, value: unknown): Promise<void> {
+  async put(key: string, value: Uint8Array | string): Promise<void> {
     await this.db.put(key, value);
   }
 
