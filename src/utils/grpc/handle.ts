@@ -4,8 +4,12 @@ import {
   ServerUnaryCall,
   status,
 } from "@grpc/grpc-js";
-import { ServiceError } from "@/utils/error";
+import { ServiceError } from "@/utils/grpc/error";
 
+/**
+ * Wraps a gRPC method handler in a try/catch block that will
+ * error with a ServiceError if an uncaught error is thrown.
+ */
 export function handle<RequestType, ResponseType>(
   cb: (
     call: ServerUnaryCall<RequestType, ResponseType>,

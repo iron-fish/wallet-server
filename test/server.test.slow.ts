@@ -1,28 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { credentials, status } from "@grpc/grpc-js";
 import { Empty, LightStreamerClient } from "@/models/lightstreamer";
+import { handle, result, autobind } from "@/utils/grpc";
 import "@/server";
-import { handle } from "@/utils/client";
 
-const client = new LightStreamerClient(
-  "localhost:50051",
-  credentials.createInsecure(),
+const client = autobind(
+  new LightStreamerClient("localhost:50051", credentials.createInsecure()),
 );
 
 describe("LightStreamerServer", () => {
   it("starts successfully", async () => {
-    await new Promise((res) => {
-      client.getServerInfo(Empty, (_, response) => {
-        expect(response.nodeStatus).toBe("started");
-        res(null);
-      });
-    });
+    const [_err, response] = await result(client.getServerInfo, Empty);
+    expect(response?.nodeStatus).toBe("started");
   });
 
   it("catches unhandled errors", async () => {
-    const bustedClient = new LightStreamerClient(
-      "localhost:50051",
-      credentials.createInsecure(),
+    const bustedClient = autobind(
+      new LightStreamerClient("localhost:50051", credentials.createInsecure()),
     );
 
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment

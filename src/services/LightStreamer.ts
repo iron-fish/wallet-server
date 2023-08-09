@@ -9,8 +9,7 @@ import {
 } from "@/models/lightstreamer";
 import { ifClient } from "@/utils/ironfish";
 import { lightBlock } from "@/utils/light_block";
-import { ServiceError } from "@/utils/error";
-import { handle } from "@/utils/server";
+import { ServiceError, handle } from "@/utils/grpc";
 
 class LightStreamer implements LightStreamerServer {
   [method: string]: UntypedHandleCall;
