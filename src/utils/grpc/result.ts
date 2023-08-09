@@ -11,6 +11,13 @@ type ServiceMethod<T> = (
 /**
  * Takes a gRPC method and its request object, and returns a promise that resolves
  * with a tuple of [error, response].
+ *
+ * @example
+ * const client = autobind(new ExampleClient("localhost:50051", credentials.createInsecure()));
+ *
+ * it('works', async () => {
+ *   const [err, response] = await result(client.getGreeting, { name: "Bjork" });
+ * });
  */
 export function result<Request, Func extends ServiceMethod<Request>>(
   func: Func,

@@ -8,7 +8,21 @@ import { ServiceError } from "@/utils/grpc/error";
 
 /**
  * Wraps a gRPC method handler in a try/catch block that will
- * error with a ServiceError if an uncaught error is thrown.
+ * error with a ServiceError if an error is thrown.
+ *
+ * @example
+ * class Example implements ExampleServer {
+ *   public getGreeting = handle<RequestType, ResponseType>(async (call, callback) => {
+ *     const name = call.request.name;
+ *     if (!name) {
+ *       throw new ServiceError(
+ *         status.INVALID_ARGUMENT,
+ *         "Either hash or sequence must be provided"
+ *       );
+ *     }
+ *     callback(null, `Hello, ${name}!`);
+ *   });
+ * }
  */
 export function handle<RequestType, ResponseType>(
   cb: (
