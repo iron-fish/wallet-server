@@ -11,6 +11,8 @@ import {
   LightBlock,
   BlockID,
   BlockRange,
+  Transaction,
+  SendResponse,
 } from "@/models/lightstreamer";
 import { ifClient } from "@/utils/ironfish";
 import { lightBlock } from "@/utils/lightBlock";
@@ -26,6 +28,28 @@ class LightStreamer implements LightStreamerServer {
     callback(null, {
       sequence: Number(response.content.currentBlockIdentifier.index),
       hash: Buffer.from(response.content.currentBlockIdentifier.hash, "hex"),
+    });
+  });
+  public sendTransaction = handle<Transaction, SendResponse>(async (
+    call,
+    callback,
+  ) => {
+    const rpcClient = await ifClient.getClient();
+    const response = await rpcClient.chain.broadcastTransaction({
+      transaction: call.request.data.toString("hex"),
+    });
+    if (!response.content) {
+      callback(
+        new Error(
+          "No data was returned when trying to broadcast the transaction",
+        ),
+        null,
+      );
+      return;
+    }
+    callback(null, {
+      accepted: response.content.accepted,
+      hash: Buffer.from(response.content.hash, "hex"),
     });
   });
 

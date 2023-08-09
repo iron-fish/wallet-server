@@ -43,7 +43,13 @@ message LightOutput {
 
 
 message Transaction {
-	// same structure as ironfish/src/primitives/transaction.ts
+    // built, encrypted transaction
+    bytes data = 1;
+}
+
+message SendResponse {
+    bytes hash = 1;
+    bool accepted = 2;
 }
 
 message ServerInfo {
@@ -61,4 +67,5 @@ service LightStreamer {
  rpc GetLatestBlock(Empty) returns (BlockID) {}
  rpc GetBlock(BlockID) returns (LightBlock) {}
  rpc GetBlockRange(BlockRange) returns (stream LightBlock) {}
+ rpc SendTransaction(Transaction) returns (SendResponse) {}
 }
