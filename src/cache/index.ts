@@ -4,7 +4,7 @@ import levelup, { LevelUp } from "levelup";
 import path from "path";
 
 import { ifClient } from "../utils/ironfish";
-import { lightBlock } from "../utils/light_block";
+import { lightBlock } from "../utils/lightBlock";
 import { LightBlock } from "../models/lightstreamer";
 
 function getCachePath(): string {
@@ -19,8 +19,7 @@ function getCachePath(): string {
   }
 
   const folderName = process.env["CACHE_FOLDER"] ?? "block-cache";
-
-  return path.join(__dirname, folderName);
+  return path.join(".", folderName);
 }
 
 class LightBlockCache {
@@ -82,7 +81,7 @@ class LightBlockCache {
     }
   }
 
-  async put(key: string, value: unknown): Promise<void> {
+  async put(key: string, value: Uint8Array | string): Promise<void> {
     await this.db.put(key, value);
   }
 

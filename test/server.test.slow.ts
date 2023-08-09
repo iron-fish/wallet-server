@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { credentials, status } from "@grpc/grpc-js";
-import { Empty, LightStreamerClient } from "@/models/lightstreamer";
-import { handle, result, autobind } from "@/utils/grpc";
+import { credentials } from "@grpc/grpc-js";
+import { Empty, LightBlock, LightStreamerClient } from "@/models/lightstreamer";
+import { lightBlockCache } from "@/cache";
+import { blockFixture } from "./fixtures";
+import { autobind, result } from "@/utils/grpc";
 import "@/server";
 
 const client = autobind(
@@ -10,27 +12,55 @@ const client = autobind(
 
 describe("LightStreamerServer", () => {
   it("starts successfully", async () => {
-    const [_err, response] = await result(client.getServerInfo, Empty);
-    expect(response?.nodeStatus).toBe("started");
+    const [_, response] = await result(client.getServerInfo, Empty);
+
+    expect(response.nodeStatus).toBe("started");
   });
 
-  it("catches unhandled errors", async () => {
-    const bustedClient = autobind(
-      new LightStreamerClient("localhost:50051", credentials.createInsecure()),
-    );
+  it("getBlock retrieves data from cache in priority", async () => {
+    const hash = blockFixture.hash.toString("hex");
+    const sequence = blockFixture.sequence.toString();
+    const encodedBlockFixture = LightBlock.encode(blockFixture).finish();
+    await lightBlockCache.put(hash, encodedBlockFixture);
+    await lightBlockCache.put(sequence, hash);
 
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    bustedClient.getServerInfo = handle(async () => {
-      throw new Error("something went wrong");
+    expect(lightBlockCache.get(hash)).resolves.toEqual(encodedBlockFixture);
+
+    function expects(response: LightBlock) {
+      expect(response.hash).toEqual(blockFixture.hash);
+      expect(response.previousBlockHash).toEqual(
+        blockFixture.previousBlockHash,
+      );
+      expect(response.sequence).toEqual(blockFixture.sequence);
+      expect(response.transactions.length).toEqual(
+        blockFixture.transactions.length,
+      );
+      expect(response.timestamp).toEqual(blockFixture.timestamp);
+      expect(response.protoVersion).toEqual(blockFixture.protoVersion);
+    }
+
+    const [, response] = await result(client.getBlock, {
+      hash: blockFixture.hash,
     });
 
-    await new Promise((res) => {
-      bustedClient.getServerInfo(Empty, (err) => {
-        expect(err?.message).toBe("something went wrong");
-        expect(err?.code).toBe(status.INTERNAL);
-        res(null);
-      });
+    expects(response);
+
+    const [, responseSequence] = await result(client.getBlock, {
+      sequence: blockFixture.sequence,
     });
+    expects(responseSequence);
+  });
+
+  it("uncached blocks are retrieved from node", async () => {
+    const [, uncachedResponse] = await result(client.getBlock, {
+      sequence: 555,
+    });
+    expect(uncachedResponse).toBeDefined();
+  });
+
+  it("getLatestBlock gets head from node", async () => {
+    const [, response] = await result(client.getLatestBlock, Empty);
+    expect(response.hash).toEqual(expect.any(Buffer));
+    expect(response.sequence).toBeGreaterThan(1);
   });
 });

@@ -8,13 +8,66 @@ import {
   BlockID,
 } from "@/models/lightstreamer";
 import { ifClient } from "@/utils/ironfish";
-import { lightBlock } from "@/utils/light_block";
+import { lightBlock } from "@/utils/lightBlock";
+import { lightBlockCache } from "@/cache";
 import { ServiceError, handle } from "@/utils/grpc";
 
 class LightStreamer implements LightStreamerServer {
   [method: string]: UntypedHandleCall;
 
+  public getLatestBlock = handle<Empty, BlockID>(async (_, callback) => {
+    const rpcClient = await ifClient.getClient();
+    const response = await rpcClient.chain.getChainInfo();
+    callback(null, {
+      sequence: Number(response.content.currentBlockIdentifier.index),
+      hash: Buffer.from(response.content.currentBlockIdentifier.hash, "hex"),
+    });
+  });
+
   public getBlock = handle<BlockID, LightBlock>(async (call, callback) => {
+    if (!call.request.hash && !call.request.sequence) {
+      callback(
+        new ServiceError(
+          status.INVALID_ARGUMENT,
+          "Either hash or sequence must be provided",
+        ),
+        null,
+      );
+      return;
+    }
+
+    // attempt cache first
+    let block = null;
+    if (call.request.hash) {
+      block = await lightBlockCache.getBlockByHash(
+        call.request.hash.toString("hex"),
+      );
+    } else if (call.request.sequence) {
+      block = await lightBlockCache.getBlockBySequence(call.request.sequence);
+    }
+    if (block) {
+      callback(null, block);
+      return;
+    }
+
+    // fallback to rpc
+    const getBlockParams = call.request.hash
+      ? { hash: call.request.hash.toString("hex") }
+      : { sequence: call.request.sequence };
+    const rpcClient = await ifClient.getClient();
+    const response = await rpcClient.chain.getBlock(getBlockParams);
+
+    if (!response) {
+      callback(
+        new ServiceError(status.FAILED_PRECONDITION, "Block not found"),
+        null,
+      );
+    }
+
+    callback(null, lightBlock(response.content));
+  });
+
+  public getBlockkk = handle<BlockID, LightBlock>(async (call, callback) => {
     if (!call.request.hash && !call.request.sequence) {
       callback(
         new ServiceError(

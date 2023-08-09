@@ -51,5 +51,6 @@ message ServerInfo {
 
 service LightStreamer {
  rpc GetServerInfo(Empty) returns (ServerInfo) {}
+ rpc GetLatestBlock(Empty) returns (BlockID) {}
  rpc GetBlock(BlockID) returns (LightBlock) {}
 }
