@@ -1,4 +1,4 @@
-import { handleUnaryCall, UntypedHandleCall } from "@grpc/grpc-js";
+import { status, UntypedHandleCall } from "@grpc/grpc-js";
 import {
   Empty,
   LightStreamerServer,
@@ -9,36 +9,44 @@ import {
 } from "@/models/lightstreamer";
 import { ifClient } from "@/utils/ironfish";
 import { lightBlock } from "@/utils/light_block";
+import { ServiceError } from "@/utils/error";
+import { handle } from "@/utils/server";
 
 class LightStreamer implements LightStreamerServer {
   [method: string]: UntypedHandleCall;
 
-  public getBlock: handleUnaryCall<BlockID, LightBlock> = async (
-    call,
-    callback,
-  ) => {
-    let err = null;
+  public getBlock = handle<BlockID, LightBlock>(async (call, callback) => {
     if (!call.request.hash && !call.request.sequence) {
-      err = new Error("Either hash or sequence must be provided");
+      callback(
+        new ServiceError(
+          status.INVALID_ARGUMENT,
+          "Either hash or sequence must be provided",
+        ),
+        null,
+      );
+      return;
     }
 
     const getBlockParams = call.request.hash
       ? { hash: call.request.hash.toString("hex") }
       : { sequence: call.request.sequence };
+
     const rpcClient = await ifClient.getClient();
+
     // this line will change to Cache.getBlock once cache is implemented
     const response = await rpcClient?.chain.getBlock(getBlockParams);
-    if (response === undefined) {
-      err = new Error("Block not found");
+
+    if (!response) {
+      callback(
+        new ServiceError(status.FAILED_PRECONDITION, "Block not found"),
+        null,
+      );
     }
 
-    callback(err, response ? lightBlock(response.content) : null);
-  };
+    callback(null, lightBlock(response.content));
+  });
 
-  public getServerInfo: handleUnaryCall<Empty, ServerInfo> = async (
-    _,
-    callback,
-  ) => {
+  public getServerInfo = handle<Empty, ServerInfo>(async (_, callback) => {
     const rpcClient = await ifClient.getClient();
     const nodeStatus = await rpcClient.node.getStatus();
 
@@ -54,7 +62,7 @@ class LightStreamer implements LightStreamerServer {
         blockHash: nodeStatus?.content.blockchain.head.hash ?? "",
       }),
     );
-  };
+  });
 }
 
 export { LightStreamer, LightStreamerService };
