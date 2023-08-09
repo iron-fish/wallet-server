@@ -14,6 +14,18 @@ import { lightBlock } from "@/utils/light_block";
 class LightStreamer implements LightStreamerServer {
   [method: string]: UntypedHandleCall;
 
+  public getLatestBlock: handleUnaryCall<Empty, BlockID> = async (
+    _,
+    callback,
+  ) => {
+    const rpcClient = await ifClient.getClient();
+    const response = await rpcClient.chain.getChainInfo();
+    callback(null, {
+      sequence: Number(response.content.currentBlockIdentifier.index),
+      hash: Buffer.from(response.content.currentBlockIdentifier.hash, "hex"),
+    });
+  };
+
   public getBlock: handleUnaryCall<BlockID, LightBlock> = async (
     call,
     callback,
@@ -53,24 +65,21 @@ class LightStreamer implements LightStreamerServer {
     _,
     callback,
   ) => {
-    try {
-      const rpcClient = await ifClient.getClient();
-      const nodeStatus = await rpcClient.node.getStatus();
-      callback(
-        null,
-        ServerInfo.fromJSON({
-          version: "0",
-          vendor: "IF Labs",
-          networkId: nodeStatus?.content.node.networkId ?? "",
-          nodeVersion: nodeStatus?.content.node.version ?? "",
-          nodeStatus: nodeStatus?.content.node.status ?? "",
-          blockHeight: nodeStatus?.content.blockchain.head.sequence ?? 0,
-          blockHash: nodeStatus?.content.blockchain.head.hash ?? "",
-        }),
-      );
-    } catch (e) {
-      callback(e as Error, null);
-    }
+    const rpcClient = await ifClient.getClient();
+    const nodeStatus = await rpcClient.node.getStatus();
+
+    callback(
+      null,
+      ServerInfo.fromJSON({
+        version: "0",
+        vendor: "IF Labs",
+        networkId: nodeStatus.content.node.networkId,
+        nodeVersion: nodeStatus.content.node.version,
+        nodeStatus: nodeStatus.content.node.status,
+        blockHeight: nodeStatus.content.blockchain.head.sequence,
+        blockHash: nodeStatus.content.blockchain.head.hash,
+      }),
+    );
   };
 }
 
