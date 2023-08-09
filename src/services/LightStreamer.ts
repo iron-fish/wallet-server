@@ -26,14 +26,10 @@ class LightStreamer implements LightStreamerServer {
 
   public getBlock = handle<BlockID, LightBlock>(async (call, callback) => {
     if (!call.request.hash && !call.request.sequence) {
-      callback(
-        new ServiceError(
-          status.INVALID_ARGUMENT,
-          "Either hash or sequence must be provided",
-        ),
-        null,
+      throw new ServiceError(
+        status.INVALID_ARGUMENT,
+        "Either hash or sequence must be provided",
       );
-      return;
     }
 
     // attempt cache first
@@ -58,41 +54,7 @@ class LightStreamer implements LightStreamerServer {
     const response = await rpcClient.chain.getBlock(getBlockParams);
 
     if (!response) {
-      callback(
-        new ServiceError(status.FAILED_PRECONDITION, "Block not found"),
-        null,
-      );
-    }
-
-    callback(null, lightBlock(response.content));
-  });
-
-  public getBlockkk = handle<BlockID, LightBlock>(async (call, callback) => {
-    if (!call.request.hash && !call.request.sequence) {
-      callback(
-        new ServiceError(
-          status.INVALID_ARGUMENT,
-          "Either hash or sequence must be provided",
-        ),
-        null,
-      );
-      return;
-    }
-
-    const getBlockParams = call.request.hash
-      ? { hash: call.request.hash.toString("hex") }
-      : { sequence: call.request.sequence };
-
-    const rpcClient = await ifClient.getClient();
-
-    // this line will change to Cache.getBlock once cache is implemented
-    const response = await rpcClient?.chain.getBlock(getBlockParams);
-
-    if (!response) {
-      callback(
-        new ServiceError(status.FAILED_PRECONDITION, "Block not found"),
-        null,
-      );
+      throw new ServiceError(status.FAILED_PRECONDITION, "Block not found");
     }
 
     callback(null, lightBlock(response.content));

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { LightBlock } from "@/models/lightstreamer";
 import { blockFixture } from "../../test/fixtures";
-import { LightBlock } from "../models/lightstreamer";
 import { lightBlockCache } from ".";
 
 describe("LightBlockCache", () => {
