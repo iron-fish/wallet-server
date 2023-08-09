@@ -23,6 +23,11 @@ export function handle<RequestType, ResponseType>(
     try {
       await cb(call, callback);
     } catch (err) {
+      if (err instanceof ServiceError) {
+        callback(err, null);
+        return;
+      }
+
       const message =
         err instanceof Error && err.message
           ? err.message

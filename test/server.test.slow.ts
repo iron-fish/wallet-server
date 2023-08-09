@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { credentials } from "@grpc/grpc-js";
+import { credentials, status } from "@grpc/grpc-js";
 import { Empty, LightBlock, LightStreamerClient } from "@/models/lightstreamer";
 import { lightBlockCache } from "@/cache";
 import { blockFixture } from "./fixtures";
@@ -10,15 +10,29 @@ const client = autobind(
   new LightStreamerClient("localhost:50051", credentials.createInsecure()),
 );
 
-describe("LightStreamerServer", () => {
-  afterAll(async () => {
-    await lightBlockCache.close();
-  });
+afterAll(async () => {
+  await lightBlockCache.close();
+});
 
+describe("LightStreamerServer", () => {
   it("starts successfully", async () => {
     const [_, response] = await result(client.getServerInfo, Empty);
 
     expect(response.nodeStatus).toBe("started");
+  });
+
+  it("getLatestBlock gets head from node", async () => {
+    const [, response] = await result(client.getLatestBlock, Empty);
+    expect(response.hash).toEqual(expect.any(Buffer));
+    expect(response.sequence).toBeGreaterThan(1);
+  });
+});
+
+describe("getBlock", () => {
+  it("errors if request does not have hash or sequence", async () => {
+    const [err] = await result(client.getBlock, {});
+    expect(err?.code).toEqual(status.INVALID_ARGUMENT);
+    expect(err?.message).toContain("Either hash or sequence must be provided");
   });
 
   it("getBlock retrieves data from cache in priority", async () => {
@@ -60,11 +74,5 @@ describe("LightStreamerServer", () => {
       sequence: 555,
     });
     expect(uncachedResponse).toBeDefined();
-  });
-
-  it("getLatestBlock gets head from node", async () => {
-    const [, response] = await result(client.getLatestBlock, Empty);
-    expect(response.hash).toEqual(expect.any(Buffer));
-    expect(response.sequence).toBeGreaterThan(1);
   });
 });

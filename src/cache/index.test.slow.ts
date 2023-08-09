@@ -5,11 +5,11 @@ function delay(ms = 3000) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-describe("LightBlockCache creating cache", () => {
-  afterAll(async () => {
-    await lightBlockCache.close();
-  });
+afterAll(async () => {
+  await lightBlockCache.close();
+});
 
+describe("LightBlockCache creating cache", () => {
   it("creating the cache adds blocks", async () => {
     const cacheBlocks = lightBlockCache.cacheBlocks();
     await Promise.race([cacheBlocks, delay()]);
