@@ -1,13 +1,19 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { credentials, status } from "@grpc/grpc-js";
-import { Empty, LightBlock, LightStreamerClient } from "@/models/lightstreamer";
+import { ServiceError, credentials, status } from "@grpc/grpc-js";
+import {
+  BlockID,
+  Empty,
+  LightBlock,
+  LightStreamerClient,
+  ServerInfo,
+} from "@/models/lightstreamer";
 import { lightBlockCache } from "@/cache";
 import { blockFixture } from "./fixtures";
-import { autobind, result } from "@/utils/grpc";
 import "@/server";
 
-const client = autobind(
-  new LightStreamerClient("localhost:50051", credentials.createInsecure()),
+const client = new LightStreamerClient(
+  "localhost:50051",
+  credentials.createInsecure(),
 );
 
 afterAll(async () => {
@@ -16,13 +22,27 @@ afterAll(async () => {
 
 describe("LightStreamerServer", () => {
   it("starts successfully", async () => {
-    const [_, response] = await result(client.getServerInfo, Empty);
+    const response = await new Promise<ServerInfo>((resolve, reject) => {
+      client.getServerInfo(Empty, (err, response) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(response);
+      });
+    });
 
     expect(response.nodeStatus).toBe("started");
   });
 
   it("getLatestBlock gets head from node", async () => {
-    const [, response] = await result(client.getLatestBlock, Empty);
+    const response = await new Promise<BlockID>((resolve, reject) => {
+      client.getLatestBlock(Empty, (err, response) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(response);
+      });
+    });
     expect(response.hash).toEqual(expect.any(Buffer));
     expect(response.sequence).toBeGreaterThan(1);
   });
@@ -30,7 +50,11 @@ describe("LightStreamerServer", () => {
 
 describe("getBlock", () => {
   it("errors if request does not have hash or sequence", async () => {
-    const [err] = await result(client.getBlock, {});
+    const err = await new Promise<ServiceError | null>((res) => {
+      client.getBlock({}, (err) => {
+        res(err);
+      });
+    });
     expect(err?.code).toEqual(status.INVALID_ARGUMENT);
     expect(err?.message).toContain("Either hash or sequence must be provided");
   });
@@ -57,22 +81,44 @@ describe("getBlock", () => {
       expect(response.protoVersion).toEqual(blockFixture.protoVersion);
     }
 
-    const [, response] = await result(client.getBlock, {
-      hash: blockFixture.hash,
+    const response = await new Promise<LightBlock>((resolve, reject) => {
+      client.getBlock({ hash: blockFixture.hash }, (err, response) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(response);
+      });
     });
 
     expects(response);
 
-    const [, responseSequence] = await result(client.getBlock, {
-      sequence: blockFixture.sequence,
-    });
+    const responseSequence = await new Promise<LightBlock>(
+      (resolve, reject) => {
+        client.getBlock(
+          { sequence: blockFixture.sequence },
+          (err, response) => {
+            if (err) {
+              reject(err);
+            }
+            resolve(response);
+          },
+        );
+      },
+    );
     expects(responseSequence);
   });
 
   it("uncached blocks are retrieved from node", async () => {
-    const [, uncachedResponse] = await result(client.getBlock, {
-      sequence: 555,
-    });
+    const uncachedResponse = await new Promise<LightBlock>(
+      (resolve, reject) => {
+        client.getBlock({ sequence: 555 }, (err, response) => {
+          if (err) {
+            reject(err);
+          }
+          resolve(response);
+        });
+      },
+    );
     expect(uncachedResponse).toBeDefined();
   });
 });
