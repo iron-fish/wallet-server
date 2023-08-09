@@ -8,7 +8,7 @@ import {
   HealthServer,
 } from "@/models/health";
 import { logger } from "@/utils/logger";
-import { ServiceError } from "@/utils/error";
+import { ServiceError } from "@/utils/grpc";
 import type { ServicesMap } from "./types";
 
 type ServiceNames = "" | keyof ServicesMap;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { lightBlockCache } from ".";
-import { LightBlock } from "../models/lightstreamer";
+import { LightBlock } from "@/models/lightstreamer";
 import { blockFixture } from "../../test/fixtures";
+import { lightBlockCache } from ".";
 
 describe("LightBlockCache", () => {
   const fakeHash = "hash1";

@@ -1,9 +1,13 @@
-import { expect, it, describe } from "vitest";
+import { expect, it, describe, afterAll } from "vitest";
 import { lightBlockCache } from ".";
 
 function delay(ms = 3000) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+afterAll(async () => {
+  await lightBlockCache.close();
+});
 
 describe("LightBlockCache creating cache", () => {
   it("creating the cache adds blocks", async () => {

@@ -3,9 +3,9 @@ import leveldown from "leveldown";
 import levelup, { LevelUp } from "levelup";
 import path from "path";
 
-import { ifClient } from "../utils/ironfish";
-import { lightBlock } from "../utils/light_block";
-import { LightBlock } from "../models/lightstreamer";
+import { ifClient } from "@/utils/ironfish";
+import { lightBlock } from "@/utils/lightBlock";
+import { LightBlock } from "@/models/lightstreamer";
 
 function getCachePath(): string {
   if (process.env["CACHE_PATH"] && process.env["CACHE_FOLDER"]) {
@@ -87,6 +87,10 @@ class LightBlockCache {
 
   async del(key: string): Promise<void> {
     await this.db.del(key);
+  }
+
+  async close(): Promise<void> {
+    await this.db.close();
   }
 }
 

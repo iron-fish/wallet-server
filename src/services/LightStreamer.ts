@@ -1,4 +1,4 @@
-import { handleUnaryCall, UntypedHandleCall } from "@grpc/grpc-js";
+import { status, UntypedHandleCall } from "@grpc/grpc-js";
 import {
   Empty,
   LightStreamerServer,
@@ -8,63 +8,59 @@ import {
   BlockID,
 } from "@/models/lightstreamer";
 import { ifClient } from "@/utils/ironfish";
+import { lightBlock } from "@/utils/lightBlock";
 import { lightBlockCache } from "@/cache";
-import { lightBlock } from "@/utils/light_block";
+import { ServiceError, handle } from "@/utils/grpc";
 
 class LightStreamer implements LightStreamerServer {
   [method: string]: UntypedHandleCall;
 
-  public getLatestBlock: handleUnaryCall<Empty, BlockID> = async (
-    _,
-    callback,
-  ) => {
+  public getLatestBlock = handle<Empty, BlockID>(async (_, callback) => {
     const rpcClient = await ifClient.getClient();
     const response = await rpcClient.chain.getChainInfo();
     callback(null, {
       sequence: Number(response.content.currentBlockIdentifier.index),
       hash: Buffer.from(response.content.currentBlockIdentifier.hash, "hex"),
     });
-  };
+  });
 
-  public getBlock: handleUnaryCall<BlockID, LightBlock> = async (
-    call,
-    callback,
-  ) => {
+  public getBlock = handle<BlockID, LightBlock>(async (call, callback) => {
     if (!call.request.hash && !call.request.sequence) {
-      callback(new Error("Must provide either hash or sequence"), null);
+      throw new ServiceError(
+        status.INVALID_ARGUMENT,
+        "Either hash or sequence must be provided",
+      );
+    }
+
+    // attempt cache first
+    let block = null;
+    if (call.request.hash) {
+      block = await lightBlockCache.getBlockByHash(
+        call.request.hash.toString("hex"),
+      );
+    } else if (call.request.sequence) {
+      block = await lightBlockCache.getBlockBySequence(call.request.sequence);
+    }
+    if (block) {
+      callback(null, block);
       return;
     }
-    try {
-      // attempt cache first
-      let block = null;
-      if (call.request.hash) {
-        block = await lightBlockCache.getBlockByHash(
-          call.request.hash.toString("hex"),
-        );
-      } else if (call.request.sequence) {
-        block = await lightBlockCache.getBlockBySequence(call.request.sequence);
-      }
-      if (block) {
-        callback(null, block);
-        return;
-      }
 
-      // fallback to rpc
-      const getBlockParams = call.request.hash
-        ? { hash: call.request.hash.toString("hex") }
-        : { sequence: call.request.sequence };
-      const rpcClient = await ifClient.getClient();
-      const response = await rpcClient.chain.getBlock(getBlockParams);
-      callback(null, lightBlock(response.content));
-    } catch (e) {
-      callback(e as Error, null);
+    // fallback to rpc
+    const getBlockParams = call.request.hash
+      ? { hash: call.request.hash.toString("hex") }
+      : { sequence: call.request.sequence };
+    const rpcClient = await ifClient.getClient();
+    const response = await rpcClient.chain.getBlock(getBlockParams);
+
+    if (!response) {
+      throw new ServiceError(status.FAILED_PRECONDITION, "Block not found");
     }
-  };
 
-  public getServerInfo: handleUnaryCall<Empty, ServerInfo> = async (
-    _,
-    callback,
-  ) => {
+    callback(null, lightBlock(response.content));
+  });
+
+  public getServerInfo = handle<Empty, ServerInfo>(async (_, callback) => {
     const rpcClient = await ifClient.getClient();
     const nodeStatus = await rpcClient.node.getStatus();
 
@@ -73,14 +69,14 @@ class LightStreamer implements LightStreamerServer {
       ServerInfo.fromJSON({
         version: "0",
         vendor: "IF Labs",
-        networkId: nodeStatus.content.node.networkId,
-        nodeVersion: nodeStatus.content.node.version,
-        nodeStatus: nodeStatus.content.node.status,
-        blockHeight: nodeStatus.content.blockchain.head.sequence,
-        blockHash: nodeStatus.content.blockchain.head.hash,
+        networkId: nodeStatus?.content.node.networkId,
+        nodeVersion: nodeStatus?.content.node.version,
+        nodeStatus: nodeStatus?.content.node.status,
+        blockHeight: nodeStatus?.content.blockchain.head.sequence,
+        blockHash: nodeStatus?.content.blockchain.head.hash,
       }),
     );
-  };
+  });
 }
 
 export { LightStreamer, LightStreamerService };
