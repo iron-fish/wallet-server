@@ -121,4 +121,75 @@ describe("getBlock", () => {
     );
     expect(uncachedResponse).toBeDefined();
   });
+
+  it("getLatestBlock gets head from node", async () => {
+    const response = await new Promise<BlockID>((resolve, reject) => {
+      client.getLatestBlock(Empty, (err, response) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(response);
+      });
+    });
+
+    expect(response.hash).toEqual(expect.any(Buffer));
+    expect(response.sequence).toBeGreaterThan(1);
+  });
+
+  it("getBlockRange streams blocks", async () => {
+    const numBlocks = 3;
+
+    const response = await new Promise<LightBlock[]>((resolve, reject) => {
+      const call = client.getBlockRange({
+        start: { sequence: 1 },
+        end: { sequence: numBlocks },
+      });
+      const blocks: LightBlock[] = [];
+      call.on("data", (response: LightBlock) => {
+        blocks.push(response);
+      });
+
+      call.on("end", () => {
+        resolve(blocks);
+      });
+
+      call.on("error", (error) => {
+        reject(error);
+      });
+    });
+    expect(response.length).toEqual(numBlocks);
+    for (let i = 0; i < numBlocks; i++) {
+      if (i > 0) {
+        expect(response[i].previousBlockHash).toEqual(response[i - 1].hash);
+      }
+    }
+  });
+
+  it("getBlockRange errors on inverse input", async () => {
+    const promise = new Promise<LightBlock[]>((_, reject) => {
+      const call = client.getBlockRange({
+        start: { sequence: 5 },
+        end: { sequence: 1 },
+      });
+      call.on("error", (error) => {
+        reject(error);
+      });
+    });
+    expect(promise).rejects.toThrow(
+      "INVALID_ARGUMENT: End sequence must be greater than start sequence",
+    );
+  });
+
+  it("getBlockRange errors on non-existent block", async () => {
+    const promise = new Promise<LightBlock[]>((_, reject) => {
+      const call = client.getBlockRange({
+        start: { sequence: 100000000000000 },
+        end: { sequence: 1000000000000001 },
+      });
+      call.on("error", (error) => {
+        reject(error);
+      });
+    });
+    expect(promise).rejects.toThrow("INTERNAL: ");
+  });
 });

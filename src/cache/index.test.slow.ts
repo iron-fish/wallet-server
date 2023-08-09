@@ -11,6 +11,7 @@ afterAll(async () => {
 
 describe("LightBlockCache creating cache", () => {
   it("creating the cache adds blocks", async () => {
+    await lightBlockCache.clear();
     const cacheBlocks = lightBlockCache.cacheBlocks();
     await Promise.race([cacheBlocks, delay()]);
     const head = await lightBlockCache.get("head");

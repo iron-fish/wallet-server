@@ -8,6 +8,13 @@ message BlockID {
      optional bytes hash = 2;
 }
 
+// BlockRange specifies a series of blocks from start to end inclusive.
+// Both BlockIDs must be sequences; specification by hash is not yet supported.
+message BlockRange {
+    BlockID start = 1;
+    BlockID end = 2;
+}
+
 message LightBlock {
 	uint32 protoVersion = 1;    // the version of this wire format, for storage
     uint64 sequence = 2;          // the height of this block
@@ -53,4 +60,5 @@ service LightStreamer {
  rpc GetServerInfo(Empty) returns (ServerInfo) {}
  rpc GetLatestBlock(Empty) returns (BlockID) {}
  rpc GetBlock(BlockID) returns (LightBlock) {}
+ rpc GetBlockRange(BlockRange) returns (stream LightBlock) {}
 }
