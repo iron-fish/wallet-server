@@ -69,11 +69,11 @@ class LightStreamer implements LightStreamerServer {
       ServerInfo.fromJSON({
         version: "0",
         vendor: "IF Labs",
-        networkId: nodeStatus?.content.node.networkId ?? "",
-        nodeVersion: nodeStatus?.content.node.version ?? "",
-        nodeStatus: nodeStatus?.content.node.status ?? "",
-        blockHeight: nodeStatus?.content.blockchain.head.sequence ?? 0,
-        blockHash: nodeStatus?.content.blockchain.head.hash ?? "",
+        networkId: nodeStatus?.content.node.networkId,
+        nodeVersion: nodeStatus?.content.node.version,
+        nodeStatus: nodeStatus?.content.node.status,
+        blockHeight: nodeStatus?.content.blockchain.head.sequence,
+        blockHash: nodeStatus?.content.blockchain.head.hash,
       }),
     );
   });
