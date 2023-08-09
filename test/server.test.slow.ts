@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { credentials } from "@grpc/grpc-js";
 import { Empty, LightBlock, LightStreamerClient } from "@/models/lightstreamer";
 import { lightBlockCache } from "@/cache";
@@ -11,6 +11,10 @@ const client = autobind(
 );
 
 describe("LightStreamerServer", () => {
+  afterAll(async () => {
+    await lightBlockCache.close();
+  });
+
   it("starts successfully", async () => {
     const [_, response] = await result(client.getServerInfo, Empty);
 

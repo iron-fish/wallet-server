@@ -1,4 +1,4 @@
-import { expect, it, describe } from "vitest";
+import { expect, it, describe, afterAll } from "vitest";
 import { lightBlockCache } from ".";
 
 function delay(ms = 3000) {
@@ -6,6 +6,10 @@ function delay(ms = 3000) {
 }
 
 describe("LightBlockCache creating cache", () => {
+  afterAll(async () => {
+    await lightBlockCache.close();
+  });
+
   it("creating the cache adds blocks", async () => {
     const cacheBlocks = lightBlockCache.cacheBlocks();
     await Promise.race([cacheBlocks, delay()]);

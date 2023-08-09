@@ -88,6 +88,10 @@ class LightBlockCache {
   async del(key: string): Promise<void> {
     await this.db.del(key);
   }
+
+  async close(): Promise<void> {
+    await this.db.close();
+  }
 }
 
 export const lightBlockCache = new LightBlockCache();
