@@ -5,6 +5,7 @@ import {
   Empty,
   LightBlock,
   LightStreamerClient,
+  SendResponse,
   ServerInfo,
 } from "@/models/lightstreamer";
 import { lightBlockCache } from "@/cache";
@@ -190,6 +191,22 @@ describe("getBlock", () => {
         reject(error);
       });
     });
+    expect(promise).rejects.toThrow("INTERNAL: ");
+  });
+
+  it("sendTransaction fails with invalid data", async () => {
+    const promise = new Promise<SendResponse>((resolve, reject) => {
+      client.sendTransaction(
+        { data: Buffer.from("invalid transaction", "hex") },
+        (err, response) => {
+          if (err) {
+            reject(err);
+          }
+          resolve(response);
+        },
+      );
+    });
+
     expect(promise).rejects.toThrow("INTERNAL: ");
   });
 });
