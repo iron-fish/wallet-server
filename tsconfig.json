@@ -27,7 +27,7 @@
     "skipLibCheck": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "src/models"],
+  "exclude": ["node_modules", "src/models", "src/**/*.test.ts", "src/**/*.test.slow.ts"],
   "references": [
     { "path": "src/models" }
   ]
