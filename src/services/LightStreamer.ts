@@ -30,28 +30,27 @@ class LightStreamer implements LightStreamerServer {
       hash: Buffer.from(response.content.currentBlockIdentifier.hash, "hex"),
     });
   });
-  public sendTransaction = handle<Transaction, SendResponse>(async (
-    call,
-    callback,
-  ) => {
-    const rpcClient = await ifClient.getClient();
-    const response = await rpcClient.chain.broadcastTransaction({
-      transaction: call.request.data.toString("hex"),
-    });
-    if (!response.content) {
-      callback(
-        new Error(
-          "No data was returned when trying to broadcast the transaction",
-        ),
-        null,
-      );
-      return;
-    }
-    callback(null, {
-      accepted: response.content.accepted,
-      hash: Buffer.from(response.content.hash, "hex"),
-    });
-  });
+  public sendTransaction = handle<Transaction, SendResponse>(
+    async (call, callback) => {
+      const rpcClient = await ifClient.getClient();
+      const response = await rpcClient.chain.broadcastTransaction({
+        transaction: call.request.data.toString("hex"),
+      });
+      if (!response.content) {
+        callback(
+          new Error(
+            "No data was returned when trying to broadcast the transaction",
+          ),
+          null,
+        );
+        return;
+      }
+      callback(null, {
+        accepted: response.content.accepted,
+        hash: Buffer.from(response.content.hash, "hex"),
+      });
+    },
+  );
 
   public getBlock = handle<BlockID, LightBlock>(async (call, callback) => {
     if (!call.request.hash && !call.request.sequence) {
@@ -80,7 +79,10 @@ class LightStreamer implements LightStreamerServer {
       ? { hash: call.request.hash.toString("hex") }
       : { sequence: call.request.sequence };
     const rpcClient = await ifClient.getClient();
-    const response = await rpcClient.chain.getBlock(getBlockParams);
+    const response = await rpcClient.chain.getBlock({
+      ...getBlockParams,
+      serialized: true,
+    });
 
     if (!response) {
       throw new ServiceError(status.FAILED_PRECONDITION, "Block not found");
@@ -120,7 +122,10 @@ class LightStreamer implements LightStreamerServer {
           }
           // fallback to rpc
           const rpcClient = await ifClient.getClient();
-          const response = await rpcClient.chain.getBlock({ sequence: i });
+          const response = await rpcClient.chain.getBlock({
+            sequence: i,
+            serialized: true,
+          });
           block = lightBlock(response.content);
           call.write(block);
         }
@@ -133,10 +138,7 @@ class LightStreamer implements LightStreamerServer {
       call.end();
     };
 
-  public getServerInfo = handle<Empty, ServerInfo>( async (
-    _,
-    callback,
-  ) => {
+  public getServerInfo = handle<Empty, ServerInfo>(async (_, callback) => {
     const rpcClient = await ifClient.getClient();
     const nodeStatus = await rpcClient.node.getStatus();
 
