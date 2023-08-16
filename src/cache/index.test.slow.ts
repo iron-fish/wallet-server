@@ -1,7 +1,7 @@
 import { expect, it, describe, afterAll } from "vitest";
 import { lightBlockCache } from ".";
 
-function delay(ms = 3000) {
+function delay(ms = 1000) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
@@ -10,7 +10,7 @@ afterAll(async () => {
 });
 
 describe("LightBlockCache creating cache", () => {
-  it("creating the cache adds blocks", async () => {
+  it("cache adds blocks", async () => {
     await lightBlockCache.clear();
     const cacheBlocks = lightBlockCache.cacheBlocks();
     await Promise.race([cacheBlocks, delay()]);

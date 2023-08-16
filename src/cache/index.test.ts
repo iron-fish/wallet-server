@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { LightBlock } from "../models/lightstreamer";
 import { blockFixture } from "../../test/fixtures";
 import { lightBlockCache } from ".";
-
+afterAll(async () => {
+  await lightBlockCache.close();
+});
 describe("LightBlockCache", () => {
   const fakeHash = "hash1";
 

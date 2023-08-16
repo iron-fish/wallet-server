@@ -6,6 +6,7 @@ import path from "path";
 import { ifClient } from "@/utils/ironfish";
 import { lightBlock } from "@/utils/lightBlock";
 import { LightBlock } from "@/models/lightstreamer";
+import { logger } from "@/utils/logger";
 
 function getCachePath(): string {
   if (process.env["CACHE_PATH"] && process.env["CACHE_FOLDER"]) {
@@ -48,6 +49,7 @@ class LightBlockCache {
 
     for await (const content of stream.contentStream()) {
       if (content.type === "connected") {
+        logger.info(`Caching block ${content.block.sequence}...`);
         const hash = content.block.hash;
         await this.db.put("head", hash);
         await this.db.put(
@@ -56,6 +58,7 @@ class LightBlockCache {
         );
         await this.db.put(content.block.sequence.toString(), hash);
       } else if (content.type === "disconnected") {
+        logger.warn(`Removing block ${content.block.sequence}...`);
         await this.db.put("head", content.block.previous.toString());
         await this.db.del(content.block.sequence);
         await this.db.del(content.block.hash);
