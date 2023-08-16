@@ -11,6 +11,7 @@ import {
 import { lightBlockCache } from "@/cache";
 import { blockFixture } from "./fixtures";
 import "@/server";
+import { NoteEncrypted } from "@ironfish/sdk/build/src/primitives/noteEncrypted";
 
 const client = new LightStreamerClient(
   "localhost:50051",
@@ -110,9 +111,10 @@ describe("getBlock", () => {
   });
 
   it("uncached blocks are retrieved from node", async () => {
+    // randomly chose a mainnet block that has a transaction with a note
     const uncachedResponse = await new Promise<LightBlock>(
       (resolve, reject) => {
-        client.getBlock({ sequence: 555 }, (err, response) => {
+        client.getBlock({ sequence: 169737 }, (err, response) => {
           if (err) {
             reject(err);
           }
@@ -121,6 +123,11 @@ describe("getBlock", () => {
       },
     );
     expect(uncachedResponse).toBeDefined();
+    for (const transaction of uncachedResponse.transactions) {
+      for (const output of transaction.outputs) {
+        expect(() => new NoteEncrypted(output.note)).not.toThrow();
+      }
+    }
   });
 
   it("getLatestBlock gets head from node", async () => {

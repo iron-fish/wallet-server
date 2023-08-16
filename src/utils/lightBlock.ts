@@ -1,4 +1,8 @@
-import { GetBlockResponse, FollowChainStreamResponse } from "@ironfish/sdk";
+import {
+  GetBlockResponse,
+  FollowChainStreamResponse,
+  Transaction,
+} from "@ironfish/sdk";
 import {
   LightBlock,
   LightOutput,
@@ -20,18 +24,18 @@ export function lightBlock(
     const lightOutputs: LightOutput[] = [];
 
     // Stubbed until changes in @ironfish/sdk are released
-    // const serialized = ''
-    // if (rpcTransaction.serialized === undefined) {
-    //     throw new Error("Transaction is missing serialized data")
-    // }
-    // const serialized = rpcTransaction.serialized
-    // let transaction	= new Transaction(Buffer.from(serialized, 'hex'))
-    // for (const spend of transaction.spends) {
-    // 	lightSpends.push({nf: spend.nullifier})
-    // }
-    // for (const note of transaction.notes) {
-    // 	lightOutputs.push({note: note.serialize()})
-    // }
+    let serialized = "";
+    if (rpcTransaction.serialized === undefined) {
+      throw new Error("Transaction is missing serialized data");
+    }
+    serialized = rpcTransaction.serialized;
+    const transaction = new Transaction(Buffer.from(serialized, "hex"));
+    for (const spend of transaction.spends) {
+      lightSpends.push({ nf: spend.nullifier });
+    }
+    for (const note of transaction.notes) {
+      lightOutputs.push({ note: note.serialize() });
+    }
     lightTransactions.push({
       index,
       hash: Buffer.from(rpcTransaction.hash, "hex"),

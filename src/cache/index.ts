@@ -40,9 +40,11 @@ class LightBlockCache {
   async cacheBlocks(): Promise<void> {
     const head = await this.get("head");
     const rpc = await ifClient.getClient();
-    const stream = await rpc.chain.followChainStream(
-      head ? { head: head.toString() } : undefined,
-    );
+    const followChainStreamParams = head ? { head: head.toString() } : {};
+    const stream = await rpc.chain.followChainStream({
+      ...followChainStreamParams,
+      serialized: true,
+    });
 
     for await (const content of stream.contentStream()) {
       if (content.type === "connected") {
