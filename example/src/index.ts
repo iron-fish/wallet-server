@@ -8,6 +8,7 @@ const client = new LightStreamerClient(
 );
 
 async function main() {
+  console.log("Starting block processor");
   const blockProcessor = new BlockProcessor(client);
   await blockProcessor.start();
 }

@@ -23,6 +23,7 @@ const POLL_INTERVAL = 30 * 1000;
  *   importing a new account.
  * Account balances =>
  *   Add example of processing notes to deterine account balances.
+ * Add error handling to server if unable to connect to node.
  */
 
 export class BlockProcessor {
