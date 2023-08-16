@@ -13,6 +13,18 @@ function addToMerkleTree(note: NoteEncrypted) {
 
 const POLL_INTERVAL = 30 * 1000;
 
+/**
+ * @todo:
+ * Reorgs =>
+ *   To determine if re-org happened, when querying new blocks, check that each block's prev block hash
+ *   matches the previous block's block hash. If it does not, walk back until you find a block that matches.
+ * Store transactions =>
+ *   Add simple DB to store transactions so we don't have to start querying from block 1 when restarting or
+ *   importing a new account.
+ * Account balances =>
+ *   Add example of processing notes to deterine account balances.
+ */
+
 export class BlockProcessor {
   private client: LightStreamerClient;
   private pollInterval?: NodeJS.Timer;
@@ -114,5 +126,7 @@ export class BlockProcessor {
         addToMerkleTree(note);
       }
     }
+
+    this.lastProcessedBlock = block.sequence;
   }
 }
