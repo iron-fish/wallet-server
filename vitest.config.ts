@@ -6,4 +6,7 @@ export const baseConfig: UserConfig["test"] = {
   alias: {
     "@": "./src",
   },
+  env: {
+    BUILD_CACHE: "false",
+  },
 };

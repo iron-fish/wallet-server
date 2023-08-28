@@ -4,6 +4,7 @@ import { Health, HealthService } from "@/services/Health";
 import { LightStreamer, LightStreamerService } from "@/services/LightStreamer";
 import { configDotEnv } from "@/utils/configDotenv";
 import { logger } from "@/utils/logger";
+import { lightBlockCache } from "@/cache";
 
 configDotEnv();
 
@@ -26,3 +27,7 @@ server.bindAsync(
     server.start();
   },
 );
+
+if (process.env["BUILD_CACHE"] === "true") {
+  void lightBlockCache.cacheBlocks();
+}
