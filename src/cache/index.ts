@@ -49,7 +49,12 @@ class LightBlockCache {
 
     for await (const content of stream.contentStream()) {
       if (content.type === "connected") {
-        logger.info(`Caching block ${content.block.sequence}...`);
+        if (content.block.sequence % 1000 === 0) {
+          logger.info(
+            `Caching block ${content.block.sequence}`,
+            new Date().toLocaleString(),
+          );
+        }
         const hash = content.block.hash;
         await this.db.put("head", hash);
         await this.db.put(
