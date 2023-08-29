@@ -5,7 +5,7 @@ import {
   Empty,
   LightBlock,
   LightStreamerClient,
-} from "../../../src/models/lightstreamer";
+} from "../../../../src/models/lightstreamer";
 import { BlockCache } from "./BlockCache";
 
 function addToMerkleTree(note: NoteEncrypted) {
@@ -17,12 +17,12 @@ const POLL_INTERVAL = 30 * 1000;
 export class BlockProcessor {
   private client: LightStreamerClient;
   private pollInterval?: NodeJS.Timer;
-  private handleStop?: () => void;
   private isProcessingBlocks: boolean = false;
-  private blockCache = new BlockCache();
+  private blockCache: BlockCache;
 
-  constructor(client: LightStreamerClient) {
+  constructor(client: LightStreamerClient, blockCache: BlockCache) {
     this.client = client;
+    this.blockCache = blockCache;
   }
 
   public async start() {
@@ -37,15 +37,10 @@ export class BlockProcessor {
       this._pollForNewBlocks.bind(this),
       POLL_INTERVAL,
     );
-
-    return new Promise<void>((res) => {
-      this.handleStop = res;
-    });
   }
 
-  public async stop() {
+  public stop() {
     clearInterval(this.pollInterval);
-    this.handleStop?.();
   }
 
   private async _pollForNewBlocks() {

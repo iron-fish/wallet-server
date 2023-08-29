@@ -1,7 +1,7 @@
 import levelup, { LevelUp } from "levelup";
 import leveldown from "leveldown";
 import path from "path";
-import { LightBlock } from "../../../src/models/lightstreamer";
+import { LightBlock } from "../../../../src/models/lightstreamer";
 
 const KNOWN_KEYS = {
   HEAD_SEQUENCE: "__HEAD_SEQUENCE__",
@@ -15,9 +15,7 @@ export class BlockCache {
   private db: LevelUp;
 
   constructor() {
-    this.db = levelup(
-      leveldown(path.join(__dirname, "..", "client-block-cache")),
-    );
+    this.db = levelup(leveldown(path.join(__dirname, "client-block-cache")));
   }
 
   public async getHeadSequence() {
@@ -39,7 +37,7 @@ export class BlockCache {
 
     this.db
       .batch()
-      .put(this.encodeKey(sequence), block)
+      .put(this.encodeKey(sequence), JSON.stringify(block))
       .put(KNOWN_KEYS.HEAD_SEQUENCE, sequence)
       .write();
   }
@@ -49,6 +47,14 @@ export class BlockCache {
   }
 
   public decodeKey(key: string) {
+    if (key in KNOWN_KEYS) {
+      return null;
+    }
+
     return Number(key);
+  }
+
+  public get createReadStream() {
+    return this.db.createReadStream;
   }
 }
