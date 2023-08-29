@@ -1,11 +1,12 @@
 import "source-map-support/register";
+import { configDotEnv } from "@/utils/configDotenv";
+configDotEnv();
+
 import { Server, ServerCredentials } from "@grpc/grpc-js";
 import { Health, HealthService } from "@/services/Health";
 import { LightStreamer, LightStreamerService } from "@/services/LightStreamer";
-import { configDotEnv } from "@/utils/configDotenv";
 import { logger } from "@/utils/logger";
-
-configDotEnv();
+import { lightBlockCache } from "@/cache";
 
 const server = new Server({
   "grpc.max_receive_message_length": -1,
@@ -26,3 +27,8 @@ server.bindAsync(
     server.start();
   },
 );
+
+if (process.env["BUILD_CACHE"] === "true") {
+  logger.info("Building block cache...");
+  void lightBlockCache.cacheBlocks();
+}
