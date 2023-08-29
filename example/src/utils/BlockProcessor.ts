@@ -6,10 +6,7 @@ import {
   LightStreamerClient,
 } from "../../../src/models/lightstreamer";
 import { ServiceError } from "@grpc/grpc-js";
-
-function addToMerkleTree(note: NoteEncrypted) {
-  return note;
-}
+import { addNotesToMerkleTree } from "../merkle/merkle";
 
 const POLL_INTERVAL = 30 * 1000;
 
@@ -96,6 +93,7 @@ export class BlockProcessor {
   }
 
   private async _processBlockRange(startSequence: number, endSequence: number) {
+    let blocksProcessed = startSequence;
     const stream = this.client.getBlockRange({
       start: {
         sequence: startSequence,
@@ -109,6 +107,10 @@ export class BlockProcessor {
       await new Promise((res) => {
         stream.on("data", (block: LightBlock) => {
           this._processBlock(block);
+          blocksProcessed++;
+          if (blocksProcessed % 100 === 0) {
+            console.log(`Processed ${blocksProcessed}/${endSequence} blocks`);
+          }
         });
 
         stream.on("end", () => {
@@ -120,13 +122,15 @@ export class BlockProcessor {
     }
   }
 
-  private _processBlock(block: LightBlock) {
+  private async _processBlock(block: LightBlock) {
+    const notes: NoteEncrypted[] = [];
     for (const transaction of block.transactions) {
       for (const output of transaction.outputs) {
         const note = new NoteEncrypted(output.note);
-        addToMerkleTree(note);
+        notes.push(note);
       }
     }
+    await addNotesToMerkleTree(notes);
 
     this.lastProcessedBlock = block.sequence;
   }

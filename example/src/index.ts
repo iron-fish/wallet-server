@@ -3,7 +3,7 @@ import { LightStreamerClient } from "../../src/models/lightstreamer";
 import { BlockProcessor } from "./utils/BlockProcessor";
 
 const client = new LightStreamerClient(
-  "localhost:50051",
+  process.env["WALLET_SERVER_HOST"] || "localhost:50051",
   credentials.createInsecure(),
 );
 
