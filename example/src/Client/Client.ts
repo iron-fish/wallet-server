@@ -33,15 +33,18 @@ export class Client {
     await this.blockProcessor.waitForProcessorSync();
   }
 
-  public async waitForAccountSync(publicAddress: string) {
-    await this.waitForProcessorSync();
-    console.log(
-      `Processor synced. Waiting for account ${publicAddress} to sync`,
-    );
+  public syncAccounts() {
+    this.accountsManager.syncAccounts();
+  }
 
+  public async waitForAccountSync(publicAddress: string) {
     const head = await this.blockCache.getHeadSequence();
     await this.accountsManager.waitForAccountSync(publicAddress, head);
     console.log(`Account ${publicAddress} synced to head ${head}`);
+  }
+
+  public getAccount(publicKey: string) {
+    return this.accountsManager.getAccount(publicKey);
   }
 
   public async start() {

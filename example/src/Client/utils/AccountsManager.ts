@@ -21,6 +21,7 @@ export interface StoredNote {
   spent: boolean;
   transactionHash: Buffer;
   index: number;
+  merkleIndex: number;
   nullifier: Buffer;
   blockHash: Buffer;
   sequence: number;
@@ -32,7 +33,7 @@ type StoredNotesByNoteHash = BufferMap<StoredNote>;
 /* Asset ID => StoredNotesByNoteHash */
 type AssetContentByAssetId = BufferMap<StoredNotesByNoteHash>;
 
-interface AccountData {
+export interface AccountData {
   key: Key;
   head: number;
   assets: AssetContentByAssetId;
@@ -60,7 +61,10 @@ export class AccountsManager {
   public addAccount(privateKey: string) {
     const accountData = this._makeAccountData(privateKey);
     this.accounts.set(...accountData);
+    return accountData[0];
+  }
 
+  public syncAccounts() {
     this.blockCache
       .createReadStream()
       .on("data", ({ key, value }: { key: string; value: Buffer }) => {
@@ -68,11 +72,14 @@ export class AccountsManager {
         if (!sequenceKey) {
           return;
         }
+        if (sequenceKey > 1765) {
+          this.events.emit("accounts-updated");
+          return;
+        }
+        console.log(`Processing accounts for block ${sequenceKey}`);
         this._processBlockForTransactions(value);
         this.events.emit("accounts-updated");
       });
-
-    return accountData[0];
   }
 
   public waitForAccountSync(
@@ -93,7 +100,7 @@ export class AccountsManager {
           1000,
           accountData.head,
         );
-        if (accountData.head >= sequence) {
+        if (accountData.head >= 1765) {
           this.events.removeListener("accounts-updated", checkSequence);
           return resolve();
         }
@@ -105,6 +112,10 @@ export class AccountsManager {
       // Listen for account updates
       this.events.on("accounts-updated", checkSequence);
     });
+  }
+
+  public getAccount(publicKey: string) {
+    return this.accounts.get(publicKey);
   }
 
   public getPublicAddresses() {
@@ -236,6 +247,7 @@ export class AccountsManager {
         transactionHash: tx.hash,
         index,
         nullifier,
+        merkleIndex: position,
         blockHash: block.hash,
         sequence: block.sequence,
       });
