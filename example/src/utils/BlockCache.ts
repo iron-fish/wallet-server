@@ -4,7 +4,7 @@ import path from "path";
 import { LightBlock } from "../../../src/models/lightstreamer";
 
 const KNOWN_KEYS = {
-  HEAD_SEQUENCE: "HEAD_SEQUENCE",
+  HEAD_SEQUENCE: "__HEAD_SEQUENCE__",
 };
 
 // Storing keys as zero-padded numbers to avoid lexicographic ordering.
