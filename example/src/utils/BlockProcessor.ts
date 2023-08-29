@@ -1,3 +1,4 @@
+import { ServiceError } from "@grpc/grpc-js";
 import { NoteEncrypted } from "@ironfish/sdk/build/src/primitives/noteEncrypted";
 import {
   BlockID,
@@ -5,7 +6,7 @@ import {
   LightBlock,
   LightStreamerClient,
 } from "../../../src/models/lightstreamer";
-import { ServiceError } from "@grpc/grpc-js";
+import { BlockCache } from "./BlockCache";
 
 function addToMerkleTree(note: NoteEncrypted) {
   return note;
@@ -13,37 +14,25 @@ function addToMerkleTree(note: NoteEncrypted) {
 
 const POLL_INTERVAL = 30 * 1000;
 
-/**
- * @todo:
- * Reorgs =>
- *   To determine if re-org happened, when querying new blocks, check that each block's prev block hash
- *   matches the previous block's block hash. If it does not, walk back until you find a block that matches.
- * Store transactions =>
- *   Add simple DB to store transactions so we don't have to start querying from block 1 when restarting or
- *   importing a new account.
- * Account balances =>
- *   Add example of processing notes to deterine account balances.
- * Add error handling to server if unable to connect to node.
- */
-
 export class BlockProcessor {
   private client: LightStreamerClient;
   private pollInterval?: NodeJS.Timer;
   private handleStop?: () => void;
   private isProcessingBlocks: boolean = false;
-  private lastProcessedBlock: number = 0;
+  private blockCache = new BlockCache();
 
   constructor(client: LightStreamerClient) {
     this.client = client;
   }
 
-  public start() {
+  public async start() {
     if (this.pollInterval !== undefined) {
       console.warn("Process already running");
       return;
     }
 
     this._pollForNewBlocks();
+
     this.pollInterval = setInterval(
       this._pollForNewBlocks.bind(this),
       POLL_INTERVAL,
@@ -78,24 +67,28 @@ export class BlockProcessor {
       throw new Error("Head sequence is undefined");
     }
 
-    if (headSequence === this.lastProcessedBlock) {
+    const cachedHeadSequence = await this.blockCache.getHeadSequence();
+
+    if (headSequence === cachedHeadSequence) {
       return;
     }
 
-    await this._processBlockRange(this.lastProcessedBlock + 1, headSequence);
+    await this._processBlockRange(cachedHeadSequence + 1, headSequence);
 
     this.isProcessingBlocks = false;
   }
 
   private _getLatestBlock() {
     return new Promise<[ServiceError | null, BlockID]>((res) => {
-      this.client.getLatestBlock(Empty, (error, result) =>
-        res([error, result]),
-      );
+      this.client.getLatestBlock(Empty, (error, result) => {
+        res([error, result]);
+      });
     });
   }
 
   private async _processBlockRange(startSequence: number, endSequence: number) {
+    console.log(`Processing blocks from ${startSequence} to ${endSequence}`);
+
     const stream = this.client.getBlockRange({
       start: {
         sequence: startSequence,
@@ -121,13 +114,13 @@ export class BlockProcessor {
   }
 
   private _processBlock(block: LightBlock) {
+    this.blockCache.cacheBlock(block);
+
     for (const transaction of block.transactions) {
       for (const output of transaction.outputs) {
         const note = new NoteEncrypted(output.note);
         addToMerkleTree(note);
       }
     }
-
-    this.lastProcessedBlock = block.sequence;
   }
 }

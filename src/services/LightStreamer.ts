@@ -24,12 +24,14 @@ class LightStreamer implements LightStreamerServer {
 
   public getLatestBlock = handle<Empty, BlockID>(async (_, callback) => {
     const rpcClient = await ifClient.getClient();
+
     const response = await rpcClient.chain.getChainInfo();
     callback(null, {
       sequence: Number(response.content.currentBlockIdentifier.index),
       hash: Buffer.from(response.content.currentBlockIdentifier.hash, "hex"),
     });
   });
+
   public sendTransaction = handle<Transaction, SendResponse>(
     async (call, callback) => {
       const rpcClient = await ifClient.getClient();
