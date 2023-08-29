@@ -10,6 +10,7 @@
   "author": "Demo",
   "license": "ISC",
   "devDependencies": {
+    "@ironfish/rust-nodejs": "^1.8.0",
     "dotenv": "^16.3.1",
     "leveldown": "^6.1.1",
     "levelup": "^5.1.1",

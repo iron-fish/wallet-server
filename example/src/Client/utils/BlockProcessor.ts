@@ -42,7 +42,8 @@ export class BlockProcessor {
       return;
     }
 
-    this._pollForNewBlocks();
+    await this._pollForNewBlocks();
+    this.events.emit("blocks-processed");
 
     this.pollInterval = setInterval(
       this._pollForNewBlocks.bind(this),
@@ -55,12 +56,9 @@ export class BlockProcessor {
   }
 
   public waitForProcessorSync(): Promise<void> {
-    console.log("Waiting for processor to sync");
-    if (!this.isProcessingBlocks) {
-      return Promise.resolve();
-    }
     console.log("Processor is currently syncing. Waiting for it to finish");
     return new Promise((resolve) => {
+      console.log("Finished block syncing processor");
       this.events.once("blocks-processed", resolve);
     });
   }
@@ -95,7 +93,7 @@ export class BlockProcessor {
     for (let i = cachedHeadSequence; i < headSequence; i += batchSize) {
       await this._processBlockRange(i, Math.min(i + batchSize, headSequence));
     }
-    this.isProcessingBlocks = false;
+    return;
   }
 
   private _getLatestBlock() {
@@ -127,6 +125,7 @@ export class BlockProcessor {
         sequence: endSequence,
       },
     });
+    console.log(startSequence, endSequence);
 
     try {
       await new Promise((res) => {
@@ -144,7 +143,6 @@ export class BlockProcessor {
         });
 
         stream.on("end", () => {
-          this.events.emit("blocks-processed", endSequence);
           res(true);
         });
       });
