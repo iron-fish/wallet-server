@@ -5,23 +5,19 @@ import { BlockCache } from "./BlockCache";
 
 interface AccountData {
   key: Key;
-  assetBalances: Map<string, bigint>;
+  assets: Map<
+    string,
+    {
+      balance: bigint;
+      notes: NoteEncrypted[];
+    }
+  >;
 }
-
-/**
- * Mapping of private key to account data including keys and asset balances
- */
-type TAccounts = Map<
-  string,
-  {
-    key: Key;
-    assetBalances: Map<string, bigint>;
-  }
->;
 
 export class AccountsManager {
   private blockCache: BlockCache;
-  private accounts: TAccounts = new Map();
+  /** publicKey => AccountData */
+  private accounts: Map<string, AccountData> = new Map();
 
   constructor(blockCache: BlockCache) {
     this.blockCache = blockCache;
@@ -51,7 +47,7 @@ export class AccountsManager {
       key.publicAddress,
       {
         key,
-        assetBalances: new Map(),
+        assets: new Map(),
       },
     ];
   }
@@ -83,9 +79,22 @@ export class AccountsManager {
       const assetId = result.assetId().toString("hex");
       const amount = result.value();
 
-      // Register additional balance for that asset id
-      const currentBalance = account.assetBalances.get(assetId) ?? BigInt(0);
-      account.assetBalances.set(assetId, currentBalance + amount);
+      // If asset id does not exist, create it
+      if (!account.assets.has(assetId)) {
+        account.assets.set(assetId, {
+          balance: BigInt(0),
+          notes: [],
+        });
+      }
+
+      const assetEntry = account.assets.get(assetId)!;
+
+      // Register note
+      assetEntry.notes.push(note);
+
+      // Update balance
+      const currentBalance = account.assets.get(assetId)?.balance ?? BigInt(0);
+      assetEntry.balance = currentBalance + amount;
     }
   }
 }
