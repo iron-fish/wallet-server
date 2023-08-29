@@ -1,3 +1,6 @@
+import path from "path";
+import levelup, { LevelUp } from "levelup";
+import leveldown from "leveldown";
 import { ServiceError } from "@grpc/grpc-js";
 import { NoteEncrypted } from "@ironfish/sdk/build/src/primitives/noteEncrypted";
 import {
@@ -6,7 +9,6 @@ import {
   LightBlock,
   LightStreamerClient,
 } from "../../../src/models/lightstreamer";
-import { BlockCache } from "./BlockCache";
 
 function addToMerkleTree(note: NoteEncrypted) {
   return note;
@@ -14,15 +16,22 @@ function addToMerkleTree(note: NoteEncrypted) {
 
 const POLL_INTERVAL = 30 * 1000;
 
+const CACHE_KEYS = {
+  HEAD_SEQUENCE: "HEAD_SEQUENCE",
+};
+
 export class BlockProcessor {
   private client: LightStreamerClient;
   private pollInterval?: NodeJS.Timer;
   private handleStop?: () => void;
   private isProcessingBlocks: boolean = false;
-  private blockCache = new BlockCache();
+  private blockCache: LevelUp;
 
   constructor(client: LightStreamerClient) {
     this.client = client;
+    this.blockCache = levelup(
+      leveldown(path.join(__dirname, "..", "client-block-cache")),
+    );
   }
 
   public async start() {
@@ -67,7 +76,7 @@ export class BlockProcessor {
       throw new Error("Head sequence is undefined");
     }
 
-    const cachedHeadSequence = await this.blockCache.getHeadSequence();
+    const cachedHeadSequence = await this._getHeadSequence();
 
     if (headSequence === cachedHeadSequence) {
       return;
@@ -76,6 +85,19 @@ export class BlockProcessor {
     await this._processBlockRange(cachedHeadSequence + 1, headSequence);
 
     this.isProcessingBlocks = false;
+  }
+
+  private async _getHeadSequence() {
+    try {
+      const headSequence = await this.blockCache.get(CACHE_KEYS.HEAD_SEQUENCE);
+      const asNumber = Number(headSequence);
+      if (isNaN(asNumber)) {
+        throw new Error("Head sequence is not a number");
+      }
+      return asNumber;
+    } catch (_err) {
+      return 0;
+    }
   }
 
   private _getLatestBlock() {
@@ -114,7 +136,7 @@ export class BlockProcessor {
   }
 
   private _processBlock(block: LightBlock) {
-    this.blockCache.cacheBlock(block);
+    this._cacheBlock(block);
 
     for (const transaction of block.transactions) {
       for (const output of transaction.outputs) {
@@ -122,5 +144,16 @@ export class BlockProcessor {
         addToMerkleTree(note);
       }
     }
+  }
+
+  private _cacheBlock(block: LightBlock) {
+    const sequence = block.sequence;
+    console.log(`Caching block ${sequence}`);
+
+    this.blockCache
+      .batch()
+      .put(sequence, block)
+      .put(CACHE_KEYS.HEAD_SEQUENCE, sequence)
+      .write();
   }
 }
