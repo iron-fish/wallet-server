@@ -58,6 +58,8 @@ class IronFishClient {
       throw error;
     }
 
+    this.clientRegistry.set(clientAddress, client);
+
     return client;
   }
 }

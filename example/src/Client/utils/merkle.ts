@@ -20,6 +20,7 @@ const notesTree = new MerkleTree({
   defaultValue: Buffer.alloc(32),
 });
 
-export const addNotesToMerkleTree = async (notes: NoteEncrypted[]) => {
-  return notesTree.addBatch(notes);
+export const addNotesToMerkleTree = async (notes: Buffer[]) => {
+  const encryptedNotes = notes.map((note) => new NoteEncrypted(note));
+  return notesTree.addBatch(encryptedNotes);
 };
