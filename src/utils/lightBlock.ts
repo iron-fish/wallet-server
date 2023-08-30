@@ -13,6 +13,9 @@ import {
 export function lightBlock(
   response: FollowChainStreamResponse | GetBlockResponse,
 ): LightBlock {
+  if (!response.block.noteSize) {
+    throw new Error("Block is missing noteSize");
+  }
   const lightTransactions: LightTransaction[] = [];
   const previousBlockHash =
     "previous" in response.block
@@ -50,5 +53,6 @@ export function lightBlock(
     previousBlockHash: Buffer.from(previousBlockHash, "hex"),
     timestamp: response.block.timestamp,
     transactions: lightTransactions,
+    noteSize: response.block.noteSize,
   };
 }
