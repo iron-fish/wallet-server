@@ -48,6 +48,9 @@ class LightBlockCache {
     });
 
     for await (const content of stream.contentStream()) {
+      if (content.block.sequence % 1000 === 0) {
+        logger.info(`Caching block ${content.block.sequence}`);
+      }
       if (content.type === "connected") {
         if (content.block.sequence % 1000 === 0) {
           logger.info(
