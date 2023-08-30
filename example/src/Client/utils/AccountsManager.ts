@@ -9,6 +9,7 @@ import {
   LightBlock,
   LightTransaction,
 } from "../../../../src/models/lightstreamer";
+import { logThrottled } from "./logThrottled";
 
 export interface DecryptedNoteValue {
   accountId: string;
@@ -137,6 +138,12 @@ export class AccountsManager {
       // Update balance
       const currentBalance = account.assets.get(assetId)?.balance ?? BigInt(0);
       assetEntry.balance = currentBalance + amount;
+
+      logThrottled(
+        `Account ${publicKey} has ${assetEntry.decryptedNotes.length} notes for asset ${assetId}`,
+        10,
+        assetEntry.decryptedNotes.length,
+      );
     }
   }
 }
