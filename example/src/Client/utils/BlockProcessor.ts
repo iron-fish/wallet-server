@@ -1,5 +1,4 @@
 import { ServiceError } from "@grpc/grpc-js";
-import { NoteEncrypted } from "@ironfish/sdk/build/src/primitives/noteEncrypted";
 import { BlockCache } from "./BlockCache";
 import {
   BlockID,
@@ -111,12 +110,11 @@ export class BlockProcessor {
   private async _processBlock(block: LightBlock) {
     this.blockCache.cacheBlock(block);
 
-    const notes: NoteEncrypted[] = [];
+    const notes: Buffer[] = [];
 
     for (const transaction of block.transactions) {
       for (const output of transaction.outputs) {
-        const note = new NoteEncrypted(output.note);
-        notes.push(note);
+        notes.push(output.note);
       }
     }
 
