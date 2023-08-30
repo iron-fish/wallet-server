@@ -42,34 +42,36 @@ class LightBlockCache {
     const head = await this.get("head");
     const rpc = await ifClient.getClient();
     const followChainStreamParams = head ? { head: head.toString() } : {};
-    const stream = await rpc.chain.followChainStream({
-      ...followChainStreamParams,
-      serialized: true,
-    });
 
-    for await (const content of stream.contentStream()) {
-      if (content.block.sequence % 1000 === 0) {
-        logger.info(`Caching block ${content.block.sequence}`);
-      }
-      if (content.type === "connected") {
-        if (content.block.sequence % 1000 === 0) {
-          logger.info(
-            `Caching block ${content.block.sequence}`,
-            new Date().toLocaleString(),
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const stream = await rpc.chain.followChainStream({
+        ...followChainStreamParams,
+        serialized: true,
+        limit: 100,
+      });
+
+      for await (const content of stream.contentStream()) {
+        if (content.type === "connected") {
+          if (content.block.sequence % 1000 === 0) {
+            logger.info(
+              `Caching block ${content.block.sequence}`,
+              new Date().toLocaleString(),
+            );
+          }
+          const hash = content.block.hash;
+          await this.db.put("head", hash);
+          await this.db.put(
+            hash,
+            LightBlock.encode(lightBlock(content)).finish(),
           );
+          await this.db.put(content.block.sequence.toString(), hash);
+        } else if (content.type === "disconnected") {
+          logger.warn(`Removing block ${content.block.sequence}...`);
+          await this.db.put("head", content.block.previous.toString());
+          await this.db.del(content.block.sequence);
+          await this.db.del(content.block.hash);
         }
-        const hash = content.block.hash;
-        await this.db.put("head", hash);
-        await this.db.put(
-          hash,
-          LightBlock.encode(lightBlock(content)).finish(),
-        );
-        await this.db.put(content.block.sequence.toString(), hash);
-      } else if (content.type === "disconnected") {
-        logger.warn(`Removing block ${content.block.sequence}...`);
-        await this.db.put("head", content.block.previous.toString());
-        await this.db.del(content.block.sequence);
-        await this.db.del(content.block.hash);
       }
     }
   }
