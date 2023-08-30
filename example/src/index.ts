@@ -7,7 +7,7 @@ async function main() {
 
   const exampleKey = generateKey();
 
-  client.addAccount(exampleKey.incomingViewKey);
+  client.addAccount(exampleKey.spendingKey);
 
   await client.waitUntilClose();
 }

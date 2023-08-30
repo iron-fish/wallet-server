@@ -37,7 +37,7 @@ export class BlockCache {
 
     this.db
       .batch()
-      .put(this.encodeKey(sequence), JSON.stringify(block))
+      .put(this.encodeKey(sequence), LightBlock.encode(block).finish())
       .put(KNOWN_KEYS.HEAD_SEQUENCE, sequence)
       .write();
   }
