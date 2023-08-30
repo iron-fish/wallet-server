@@ -1,11 +1,14 @@
-import { generateKeyFromPrivateKey, Key } from "@ironfish/rust-nodejs";
-import { NoteEncrypted } from "@ironfish/sdk/build/src/primitives/noteEncrypted";
+import {
+  generateKeyFromPrivateKey,
+  Key,
+  NoteEncrypted,
+  Note,
+} from "@ironfish/rust-nodejs";
+import { BlockCache } from "./BlockCache";
 import {
   LightBlock,
   LightTransaction,
 } from "../../../../src/models/lightstreamer";
-import { BlockCache } from "./BlockCache";
-import { Note } from "@ironfish/sdk/build/src/primitives/note";
 
 export interface DecryptedNoteValue {
   accountId: string;
@@ -96,14 +99,18 @@ export class AccountsManager {
       if (!account) return;
 
       // Decrypt note using view key
-      const result = note.decryptNoteForOwner(account.key.incomingViewKey);
+      const decryptedNoteBuffer = note.decryptNoteForOwner(
+        account.key.incomingViewKey,
+      );
 
       // If no result, note is not for this account
-      if (!result) return;
+      if (!decryptedNoteBuffer) return;
+
+      const foundNode = Note.deserialize(decryptedNoteBuffer);
 
       // Get asset id and amount for note
-      const assetId = result.assetId().toString("hex");
-      const amount = result.value();
+      const assetId = foundNode.assetId().toString("hex");
+      const amount = foundNode.value();
 
       // If asset id does not exist, create it
       if (!account.assets.has(assetId)) {
@@ -118,7 +125,7 @@ export class AccountsManager {
       // Register note
       assetEntry.decryptedNotes.push({
         accountId: publicKey,
-        note: result,
+        note: foundNode,
         spent: false,
         transactionHash: tx.hash,
         index,
