@@ -2,6 +2,7 @@ import levelup, { LevelUp } from "levelup";
 import leveldown from "leveldown";
 import path from "path";
 import { LightBlock } from "../../../../src/models/lightstreamer";
+import { logThrottled } from "./logThrottled";
 
 const KNOWN_KEYS = {
   HEAD_SEQUENCE: "__HEAD_SEQUENCE__",
@@ -33,7 +34,8 @@ export class BlockCache {
 
   public cacheBlock(block: LightBlock) {
     const sequence = block.sequence;
-    console.log(`Caching block ${sequence}`);
+
+    logThrottled(`Caching block ${sequence}`, 100, block.sequence);
 
     this.db
       .batch()

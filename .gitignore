@@ -6,3 +6,5 @@ node_modules/
 .eslintcache
 *block-cache*
 *testdb*
+
+secrets.ts

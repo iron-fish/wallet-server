@@ -7,6 +7,7 @@ import {
   LightStreamerClient,
 } from "../../../../src/models/lightstreamer";
 import { addNotesToMerkleTree } from "./merkle";
+import { logThrottled } from "./logThrottled";
 
 const POLL_INTERVAL = 30 * 1000;
 
@@ -60,7 +61,7 @@ export class BlockProcessor {
 
     const cachedHeadSequence = await this.blockCache.getHeadSequence();
 
-    if (headSequence === cachedHeadSequence) {
+    if (cachedHeadSequence + 1 >= headSequence) {
       return;
     }
 
@@ -78,7 +79,10 @@ export class BlockProcessor {
   }
 
   private async _processBlockRange(startSequence: number, endSequence: number) {
+    console.log(`Processing blocks from ${startSequence} to ${endSequence}`);
+
     let blocksProcessed = startSequence;
+
     const stream = this.client.getBlockRange({
       start: {
         sequence: startSequence,
@@ -93,15 +97,20 @@ export class BlockProcessor {
         stream.on("data", (block: LightBlock) => {
           this._processBlock(block);
           blocksProcessed++;
-          if (blocksProcessed % 100 === 0) {
-            console.log(`Processed ${blocksProcessed}/${endSequence} blocks`);
-          }
+
+          logThrottled(
+            `Processed ${blocksProcessed}/${endSequence} blocks`,
+            100,
+            blocksProcessed,
+          );
         });
 
         stream.on("end", () => {
           res(true);
         });
       });
+
+      console.log("Finished processing blocks");
     } catch (err) {
       console.error(err);
     }
