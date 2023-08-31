@@ -65,7 +65,13 @@ export class BlockProcessor {
       return;
     }
 
-    await this._processBlockRange(cachedHeadSequence + 1, headSequence);
+    const batchSize = process.env["BLOCK_PROCESSING_BATCH_SIZE"]
+      ? parseInt(process.env["BLOCK_PROCESSING_BATCH_SIZE"])
+      : 100;
+
+    for (let i = cachedHeadSequence; i < headSequence; i += batchSize) {
+      await this._processBlockRange(i, Math.min(i + batchSize, headSequence));
+    }
 
     this.isProcessingBlocks = false;
   }
