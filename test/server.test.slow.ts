@@ -184,7 +184,7 @@ describe("getBlock", () => {
       });
     });
     expect(promise).rejects.toThrow(
-      "INVALID_ARGUMENT: End sequence must be greater than start sequence",
+      "INVALID_ARGUMENT: End sequence must be greater than or equal to start sequence",
     );
   });
 

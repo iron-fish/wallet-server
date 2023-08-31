@@ -95,7 +95,10 @@ class LightStreamer implements LightStreamerServer {
 
   public getBlockRange: handleServerStreamingCall<BlockRange, LightBlock> =
     async (call) => {
-      if (!call.request.start?.sequence || !call.request.end?.sequence) {
+      if (
+        (!call.request.start?.sequence && call.request.start?.sequence !== 0) ||
+        (!call.request.end?.sequence && call.request.end?.sequence !== 0)
+      ) {
         call.emit("error", {
           code: status.INVALID_ARGUMENT,
           details: "Must provide sequence for start and end",
@@ -103,13 +106,27 @@ class LightStreamer implements LightStreamerServer {
         call.end();
         return;
       }
-      if (call.request.start.sequence >= call.request.end.sequence) {
+
+      if (call.request.start.sequence > call.request.end.sequence) {
         call.emit("error", {
           code: status.INVALID_ARGUMENT,
-          details: "End sequence must be greater than start sequence",
+          details:
+            "End sequence must be greater than or equal to start sequence",
         });
         call.end();
         return;
+      }
+
+      const requested_block_amount =
+        call.request.end.sequence - call.request.start.sequence;
+      if (
+        process.env["BLOCK_RANGE_MAX"] &&
+        requested_block_amount > Number(process.env["BLOCK_RANGE_MAX"])
+      ) {
+        call.emit("error", {
+          code: status.INVALID_ARGUMENT,
+          details: `Maximum block range exceeded for server, requested: ${requested_block_amount}, allowed: ${process.env["BLOCK_RANGE_MAX"]}}`,
+        });
       }
       try {
         for (
