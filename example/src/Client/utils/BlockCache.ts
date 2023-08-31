@@ -28,7 +28,7 @@ export class BlockCache {
       }
       return asNumber;
     } catch (_err) {
-      return 0;
+      return 1;
     }
   }
 
