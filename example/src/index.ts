@@ -1,7 +1,7 @@
 import { config } from "dotenv";
-import { Client } from "./Client/Client";
-
 config();
+
+import { Client } from "./Client/Client";
 
 async function main() {
   const client = new Client();

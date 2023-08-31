@@ -5,7 +5,7 @@ import { AccountsManager } from "./utils/AccountsManager";
 import { BlockCache } from "./utils/BlockCache";
 
 const client = new LightStreamerClient(
-  "localhost:50051",
+  process.env["WALLET_SERVER_HOST"] ?? "localhost:50051",
   credentials.createInsecure(),
 );
 
