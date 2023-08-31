@@ -39,12 +39,12 @@ class LightBlockCache {
   }
 
   async cacheBlocks(): Promise<void> {
-    const head = await this.get("head");
     const rpc = await ifClient.getClient();
-    const followChainStreamParams = head ? { head: head.toString() } : {};
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
+      const head = await this.get("head");
+      const followChainStreamParams = head ? { head: head.toString() } : {};
       const stream = await rpc.chain.followChainStream({
         ...followChainStreamParams,
         serialized: true,
