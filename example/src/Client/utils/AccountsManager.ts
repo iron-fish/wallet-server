@@ -60,6 +60,10 @@ export class AccountsManager {
     return Array.from(this.accounts.keys());
   }
 
+  public async handleReorg(invalidBlocks: LightBlock[]) {
+    console.log(invalidBlocks);
+  }
+
   private _makeAccountData(privateKey: string): [string, AccountData] {
     const key = generateKeyFromPrivateKey(privateKey);
     return [

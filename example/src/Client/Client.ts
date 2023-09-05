@@ -17,8 +17,12 @@ export class Client {
 
   constructor() {
     this.blockCache = new BlockCache();
-    this.blockProcessor = new BlockProcessor(client, this.blockCache);
     this.accountsManager = new AccountsManager(this.blockCache);
+    this.blockProcessor = new BlockProcessor(
+      client,
+      this.blockCache,
+      this.accountsManager,
+    );
   }
 
   public addAccount(privateKey: string) {

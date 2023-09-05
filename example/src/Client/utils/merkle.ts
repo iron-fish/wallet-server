@@ -24,3 +24,7 @@ export const addNotesToMerkleTree = async (notes: Buffer[]) => {
   const encryptedNotes = notes.map((note) => new NoteEncrypted(note));
   return notesTree.addBatch(encryptedNotes);
 };
+
+export const revertToNoteSize = async (noteSize: number) => {
+  await notesTree.truncate(noteSize);
+};

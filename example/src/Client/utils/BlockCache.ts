@@ -32,12 +32,12 @@ export class BlockCache {
     }
   }
 
-  public cacheBlock(block: LightBlock) {
+  public async cacheBlock(block: LightBlock) {
     const sequence = block.sequence;
 
     logThrottled(`Caching block ${sequence}`, 100, block.sequence);
 
-    this.db
+    await this.db
       .batch()
       .put(this.encodeKey(sequence), LightBlock.encode(block).finish())
       .put(KNOWN_KEYS.HEAD_SEQUENCE, sequence)
@@ -54,6 +54,54 @@ export class BlockCache {
     }
 
     return Number(key);
+  }
+
+  public getBlockBySequence(sequence: number): Promise<LightBlock> {
+    return this.db.get(this.encodeKey(sequence));
+  }
+
+  public async handleReorg(lastValidBlock: LightBlock) {
+    const newHeadSequence = lastValidBlock.sequence;
+    const prevHeadSequence = await this.getHeadSequence();
+
+    if (newHeadSequence >= prevHeadSequence) {
+      return;
+    }
+
+    const keysToDelete: string[] = [];
+
+    // We're going to delete all the blocks starting at the new head sequence
+    // and going up to the previous head sequence.
+    for (let i = newHeadSequence; i <= prevHeadSequence; i++) {
+      keysToDelete.push(this.encodeKey(i));
+    }
+
+    await this.db.batch(keysToDelete.map((key) => ({ type: "del", key })));
+
+    await this.cacheBlock(lastValidBlock);
+  }
+
+  public async getBlockRange(
+    startSequence: number,
+    endSequence: number | null = null,
+  ): Promise<LightBlock[]> {
+    if (endSequence === null) {
+      endSequence = await this.getHeadSequence();
+    }
+
+    if (startSequence > endSequence) {
+      throw new Error("Start sequence cannot be greater than end sequence");
+    }
+
+    const keys: string[] = [];
+
+    for (let i = startSequence; i <= endSequence; i++) {
+      keys.push(this.encodeKey(i));
+    }
+
+    const blocks: LightBlock[] = await this.db.getMany(keys);
+
+    return blocks;
   }
 
   public get createReadStream() {

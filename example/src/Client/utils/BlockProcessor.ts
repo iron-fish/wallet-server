@@ -6,8 +6,9 @@ import {
   LightBlock,
   LightStreamerClient,
 } from "../../../../src/models/lightstreamer";
-import { addNotesToMerkleTree } from "./merkle";
+import { addNotesToMerkleTree, revertToNoteSize } from "./merkle";
 import { logThrottled } from "./logThrottled";
+import { AccountsManager } from "./AccountsManager";
 
 const POLL_INTERVAL = 30 * 1000;
 
@@ -16,10 +17,16 @@ export class BlockProcessor {
   private pollInterval?: NodeJS.Timer;
   private isProcessingBlocks: boolean = false;
   private blockCache: BlockCache;
+  private accountsManager: AccountsManager;
 
-  constructor(client: LightStreamerClient, blockCache: BlockCache) {
+  constructor(
+    client: LightStreamerClient,
+    blockCache: BlockCache,
+    accountsManager: AccountsManager,
+  ) {
     this.client = client;
     this.blockCache = blockCache;
+    this.accountsManager = accountsManager;
   }
 
   public async start() {
@@ -84,6 +91,14 @@ export class BlockProcessor {
     });
   }
 
+  private _getBlockBySequence(sequence: number) {
+    return new Promise<[ServiceError | null, BlockID]>((res) => {
+      this.client.getBlock({ sequence }, (error, result) => {
+        res([error, result]);
+      });
+    });
+  }
+
   private async _processBlockRange(startSequence: number, endSequence: number) {
     console.log(`Processing blocks from ${startSequence} to ${endSequence}`);
 
@@ -123,6 +138,12 @@ export class BlockProcessor {
   }
 
   private async _processBlock(block: LightBlock) {
+    const hasReorg = await this._checkForReorg(block);
+
+    if (hasReorg) {
+      return;
+    }
+
     this.blockCache.cacheBlock(block);
 
     const notes: Buffer[] = [];
@@ -134,5 +155,64 @@ export class BlockProcessor {
     }
 
     await addNotesToMerkleTree(notes);
+  }
+
+  private async _checkForReorg(block: LightBlock) {
+    // If we're not on block 2 or greater, reorgs are impossible.
+    if (!(block.sequence > 1)) {
+      return false;
+    }
+
+    const prevBlock = await this.blockCache.getBlockBySequence(
+      block.sequence - 1,
+    );
+
+    // If the incoming block's previous block hash matches the previous block's hash,
+    // there is no reorg.
+    if (block.previousBlockHash === prevBlock.hash) {
+      return false;
+    }
+
+    // Otherwise, we have to walk back the chain until we find the last valid block.
+    let lastValidBlock: LightBlock | null = null;
+    let currentSequence = block.sequence - 1;
+
+    while (!lastValidBlock) {
+      // Get block from server
+      const [err, block] = await this._getBlockBySequence(currentSequence);
+
+      if (err) {
+        throw err;
+      }
+
+      // Get block from cache
+      const cachedBlock = await this.blockCache.getBlockBySequence(
+        currentSequence,
+      );
+
+      // If the two blocks' hash matches, we've found the last valid block.
+      if (block.hash === cachedBlock.hash) {
+        lastValidBlock = cachedBlock;
+        break;
+      }
+
+      currentSequence -= 1;
+
+      // If we've reached the genesis block without finding the last valid block,
+      // something is seriously wrong.
+      if (currentSequence === 1) {
+        throw new Error("Reached genesis block without finding a valid chain");
+      }
+    }
+
+    const invalidBlocks = await this.blockCache.getBlockRange(
+      lastValidBlock.sequence + 1,
+    );
+
+    await this.accountsManager.handleReorg(invalidBlocks);
+    await this.blockCache.handleReorg(lastValidBlock);
+    await revertToNoteSize(lastValidBlock.noteSize);
+
+    return true;
   }
 }
