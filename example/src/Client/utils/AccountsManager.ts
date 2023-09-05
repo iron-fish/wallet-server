@@ -31,7 +31,8 @@ interface AccountData {
     string,
     {
       balance: bigint;
-      decryptedNotes: DecryptedNoteValue[];
+      // Stringified note hash => DecryptedNoteValue
+      decryptedNotes: Map<string, DecryptedNoteValue>;
     }
   >;
 }
@@ -101,7 +102,9 @@ export class AccountsManager {
   }
 
   public async handleReorg(invalidBlocks: LightBlock[]) {
-    console.log(invalidBlocks);
+    invalidBlocks.forEach((block) => {
+      this._handleBlockReorg(block);
+    });
   }
 
   private _makeAccountData(privateKey: string): [string, AccountData] {
@@ -156,26 +159,26 @@ export class AccountsManager {
       // If no result, note is not for this account
       if (!decryptedNoteBuffer) return;
 
-      const foundNode = Note.deserialize(decryptedNoteBuffer);
+      const foundNote = Note.deserialize(decryptedNoteBuffer);
 
       // Get asset id and amount for note
-      const assetId = foundNode.assetId().toString("hex");
-      const amount = foundNode.value();
+      const assetId = foundNote.assetId().toString("hex");
+      const amount = foundNote.value();
 
       // If asset id does not exist, create it
       if (!account.assets.has(assetId)) {
         account.assets.set(assetId, {
           balance: BigInt(0),
-          decryptedNotes: [],
+          decryptedNotes: new Map(),
         });
       }
 
       const assetEntry = account.assets.get(assetId)!;
 
       // Register note
-      assetEntry.decryptedNotes.push({
+      assetEntry.decryptedNotes.set(foundNote.hash().toString("hex"), {
         accountId: publicKey,
-        note: foundNode,
+        note: foundNote,
         spent: false,
         transactionHash: tx.hash,
         index,
@@ -189,10 +192,50 @@ export class AccountsManager {
       assetEntry.balance = currentBalance + amount;
 
       logThrottled(
-        `Account ${publicKey} has ${assetEntry.decryptedNotes.length} notes for asset ${assetId}`,
+        `Account ${publicKey} has ${assetEntry.decryptedNotes.size} notes for asset ${assetId}`,
         10,
-        assetEntry.decryptedNotes.length,
+        assetEntry.decryptedNotes.size,
       );
+    }
+  }
+
+  private _handleBlockReorg(block: LightBlock) {
+    // Each account needs to go through all transactions in the block and
+    // check if any of the notes are for them. If so, they need to be removed.
+
+    for (const [_, account] of this.accounts) {
+      block.transactions.forEach((tx) => {
+        tx.outputs.forEach((output) => {
+          const note = new NoteEncrypted(output.note);
+
+          // Decrypt note using view key
+          const decryptedNoteBuffer = note.decryptNoteForOwner(
+            account.key.incomingViewKey,
+          );
+
+          // If the note could not be decrypted, it's not for this account.
+          if (!decryptedNoteBuffer) {
+            return;
+          }
+
+          const foundNote = Note.deserialize(decryptedNoteBuffer);
+          const assetId = foundNote.assetId().toString("hex");
+          const noteHash = foundNote.hash().toString("hex");
+
+          const assetForNote = account.assets.get(assetId);
+
+          // If the asset does not exist, or the note is not registered, we can continue.
+          if (!assetForNote || !assetForNote.decryptedNotes.has(noteHash)) {
+            return;
+          }
+
+          // Update balance and remove note
+          assetForNote.balance -= foundNote.value();
+          assetForNote.decryptedNotes.delete(noteHash);
+        });
+
+        // @todo: Process spends
+      });
     }
   }
 }

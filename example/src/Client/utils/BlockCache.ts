@@ -99,9 +99,11 @@ export class BlockCache {
       keys.push(this.encodeKey(i));
     }
 
-    const blocks: LightBlock[] = await this.db.getMany(keys);
+    const blocks: Buffer[] = await this.db.getMany(keys);
 
-    return blocks;
+    return blocks.map((block) => {
+      return LightBlock.decode(block);
+    });
   }
 
   public get createReadStream() {
