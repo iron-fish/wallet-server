@@ -1,3 +1,5 @@
+import { EventEmitter } from "events";
+
 import { ServiceError } from "@grpc/grpc-js";
 import { BlockCache } from "./BlockCache";
 import {
@@ -16,6 +18,7 @@ export class BlockProcessor {
   private pollInterval?: NodeJS.Timer;
   private isProcessingBlocks: boolean = false;
   private blockCache: BlockCache;
+  private events: EventEmitter = new EventEmitter(); // Event emitter for block events
 
   constructor(client: LightStreamerClient, blockCache: BlockCache) {
     this.client = client;
@@ -40,13 +43,21 @@ export class BlockProcessor {
     clearInterval(this.pollInterval);
   }
 
+  public waitForProcessorSync(): Promise<void> {
+    console.log("Waiting for processor to sync");
+    if (!this.isProcessingBlocks) {
+      return Promise.resolve();
+    }
+    console.log("Processor is currently syncing. Waiting for it to finish");
+    return new Promise((resolve) => {
+      this.events.once("blocks-processed", resolve);
+    });
+  }
+
   private async _pollForNewBlocks() {
     if (this.isProcessingBlocks) {
       return;
     }
-
-    this.isProcessingBlocks = true;
-
     const [latestBlockError, latestBlock] = await this._getLatestBlock();
 
     if (latestBlockError) {
@@ -65,14 +76,14 @@ export class BlockProcessor {
       return;
     }
 
+    this.isProcessingBlocks = true;
+
     const batchSize = process.env["BLOCK_PROCESSING_BATCH_SIZE"]
       ? parseInt(process.env["BLOCK_PROCESSING_BATCH_SIZE"])
       : 100;
-
     for (let i = cachedHeadSequence; i < headSequence; i += batchSize) {
       await this._processBlockRange(i, Math.min(i + batchSize, headSequence));
     }
-
     this.isProcessingBlocks = false;
   }
 
@@ -112,6 +123,7 @@ export class BlockProcessor {
         });
 
         stream.on("end", () => {
+          this.events.emit("blocks-processed", endSequence);
           res(true);
         });
       });
