@@ -1,3 +1,5 @@
+import { EventEmitter } from "events";
+
 import {
   generateKeyFromPrivateKey,
   Key,
@@ -24,6 +26,7 @@ export interface DecryptedNoteValue {
 
 interface AccountData {
   key: Key;
+  head: number;
   assets: Map<
     string,
     {
@@ -37,13 +40,15 @@ export class AccountsManager {
   private blockCache: BlockCache;
   /** publicKey => AccountData */
   private accounts: Map<string, AccountData> = new Map();
+  private events: EventEmitter = new EventEmitter();
 
   constructor(blockCache: BlockCache) {
     this.blockCache = blockCache;
   }
 
   public addAccount(privateKey: string) {
-    this.accounts.set(...this._makeAccountData(privateKey));
+    const accountData = this._makeAccountData(privateKey);
+    this.accounts.set(...accountData);
 
     this.blockCache
       .createReadStream()
@@ -53,7 +58,42 @@ export class AccountsManager {
           return;
         }
         this._processBlockForTransactions(value);
+        this.events.emit("accounts-updated");
       });
+
+    return accountData[0];
+  }
+
+  public waitForAccountSync(
+    publicAddress: string,
+    sequence: number,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const checkSequence = () => {
+        const accountData = this.accounts.get(publicAddress);
+        if (!accountData) {
+          this.events.removeListener("accounts-updated", checkSequence);
+          return reject(
+            new Error(`Account with public address ${publicAddress} not found`),
+          );
+        }
+        logThrottled(
+          `Waiting for account sync to complete, ${accountData.head}/${sequence}`,
+          1000,
+          accountData.head,
+        );
+        if (accountData.head >= sequence) {
+          this.events.removeListener("accounts-updated", checkSequence);
+          return resolve();
+        }
+      };
+
+      // Check initially
+      checkSequence();
+
+      // Listen for account updates
+      this.events.on("accounts-updated", checkSequence);
+    });
   }
 
   public getPublicAddresses() {
@@ -70,6 +110,7 @@ export class AccountsManager {
       key.publicAddress,
       {
         key,
+        head: 0,
         assets: new Map(),
       },
     ];
@@ -90,6 +131,10 @@ export class AccountsManager {
 
       // @todo: Process spends
     });
+
+    for (const [_, account] of this.accounts) {
+      account.head = parsedBlock.sequence;
+    }
   }
 
   private _processNote(

@@ -13,7 +13,10 @@ async function main() {
     throw new Error("SPENDING_KEY not found");
   }
 
-  client.addAccount(spendingKey);
+  const publicAddress = client.addAccount(spendingKey);
+  console.log("Added account");
+  await client.waitForAccountSync(publicAddress);
+  console.log("Account synced");
 
   await client.waitUntilClose();
 }

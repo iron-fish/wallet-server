@@ -26,7 +26,22 @@ export class Client {
   }
 
   public addAccount(privateKey: string) {
-    this.accountsManager.addAccount(privateKey);
+    return this.accountsManager.addAccount(privateKey);
+  }
+
+  public async waitForProcessorSync() {
+    await this.blockProcessor.waitForProcessorSync();
+  }
+
+  public async waitForAccountSync(publicAddress: string) {
+    await this.waitForProcessorSync();
+    console.log(
+      `Processor synced. Waiting for account ${publicAddress} to sync`,
+    );
+
+    const head = await this.blockCache.getHeadSequence();
+    await this.accountsManager.waitForAccountSync(publicAddress, head);
+    console.log(`Account ${publicAddress} synced to head ${head}`);
   }
 
   public async start() {
