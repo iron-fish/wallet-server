@@ -25,20 +25,25 @@ export interface DecryptedNoteValue {
   sequence: number;
 }
 
-/* Nullifier => DecryptedNotesByNullifier */
-type DecryptedNotesByNullifier = Map<Buffer, DecryptedNoteValue>;
+/* Note hash => DecryptedNoteValue */
+type AssetNotesByNoteHash = Map<Buffer, DecryptedNoteValue>;
 
-/* Asset ID => DecryptedNotesByNullifier */
-type AssetContentByAssetId = Map<Buffer, DecryptedNotesByNullifier>;
+/* Asset ID => AssetNotesByNoteHash */
+type AssetContentByAssetId = Map<Buffer, AssetNotesByNoteHash>;
 
 interface AccountData {
   key: Key;
   head: number;
   assets: AssetContentByAssetId;
-  /* Note hash => Asset ID */
-  assetIdByNoteHash: Map<Buffer, Buffer>;
-  /* Nullifier => Note hash  */
+  /**
+   * The following items, `noteHashByNullifier` and `assetIdByNoteHash`, are used when processing spends.
+   * Since all we have are the nullifiers, we first get the note hash from `noteHashByNullifier` and then we
+   * get its asset id from `assetIdByNoteHash`. We can then get the note from the asset content and mark it as spent.
+   */
+  /** Nullifier => Note hash */
   noteHashByNullifier: Map<Buffer, Buffer>;
+  /** Note hash => Asset ID */
+  assetIdByNoteHash: Map<Buffer, Buffer>;
 }
 
 export class AccountsManager {
@@ -217,7 +222,7 @@ export class AccountsManager {
       account.noteHashByNullifier.set(nullifier, foundNote.hash());
 
       // Register note
-      assetContent.set(nullifier, {
+      assetContent.set(foundNote.hash(), {
         accountId: publicKey,
         note: foundNote,
         spent: false,
@@ -246,7 +251,7 @@ export class AccountsManager {
 
       if (!assetId) return;
 
-      const note = account.assets.get(assetId)?.get(spend.nf);
+      const note = account.assets.get(assetId)?.get(noteHash);
 
       if (!note) return;
 
@@ -261,33 +266,31 @@ export class AccountsManager {
     // For spends, we need to mark the note as unspent and update the appropriate mappings.
     // For outputs, we need to remove the note.
 
+    // We have to process reorg'd blocks for each account
     for (const [_, account] of this.accounts) {
       block.transactions.forEach((tx) => {
+        // First we'll process spends
         tx.spends.forEach((spend) => {
+          // If we have a note hash for the nullifier, it means we have a note for this account.
           const noteHash = account.noteHashByNullifier.get(spend.nf);
 
           if (!noteHash) return;
 
+          // If we found a note hash, the following should exist.
           const assetId = account.assetIdByNoteHash.get(noteHash);
+          const assetContent = assetId && account.assets.get(assetId);
+          const decryptedNote = assetContent && assetContent.get(noteHash);
 
-          if (!assetId) return;
+          if (!assetId || !assetContent || !decryptedNote) return;
 
-          const assetContent = account.assets.get(assetId);
-
-          if (!assetContent) return;
-
-          const decryptedNote = assetContent.get(spend.nf);
-
-          if (!decryptedNote) return;
-
-          account.assetIdByNoteHash.set(decryptedNote.note.hash(), assetId);
-          account.noteHashByNullifier.set(
-            decryptedNote.nullifier,
-            decryptedNote.note.hash(),
-          );
+          // Since we're undoing a spend, we need to update the mappings,
+          // and mark the note as unspent.
+          account.assetIdByNoteHash.set(noteHash, assetId);
+          account.noteHashByNullifier.set(decryptedNote.nullifier, noteHash);
           decryptedNote.spent = false;
         });
 
+        // Next we'll process outputs
         tx.outputs.forEach((output) => {
           const note = new NoteEncrypted(output.note);
 
@@ -301,18 +304,20 @@ export class AccountsManager {
             return;
           }
 
-          const foundNote = Note.deserialize(decryptedNoteBuffer);
-          const assetId = foundNote.assetId();
-          const assetForNote = account.assets.get(assetId);
+          const deserializedNote = Note.deserialize(decryptedNoteBuffer);
+          const noteHash = deserializedNote.hash();
+          const assetContent = account.assets.get(deserializedNote.assetId());
+          const storedNote = assetContent && assetContent.get(noteHash);
 
           // If the asset does not exist, or the note is not registered, we can continue.
-          if (!assetForNote) {
+          if (!assetContent || !storedNote) {
             return;
           }
 
-          // Remove note
-          const noteHash = foundNote.hash();
-          assetForNote.delete(noteHash);
+          // Finally, we can remove the lookup mappings, and delete the note.
+          account.noteHashByNullifier.delete(storedNote.nullifier);
+          account.assetIdByNoteHash.delete(noteHash);
+          assetContent.delete(noteHash);
         });
       });
     }
