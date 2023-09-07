@@ -14,7 +14,7 @@ import {
 } from "../../../../src/models/lightstreamer";
 import { logThrottled } from "./logThrottled";
 
-export interface DecryptedNoteValue {
+export interface StoredNote {
   accountId: string;
   note: Note;
   spent: boolean;
@@ -25,11 +25,11 @@ export interface DecryptedNoteValue {
   sequence: number;
 }
 
-/* Note hash => DecryptedNoteValue */
-type AssetNotesByNoteHash = Map<Buffer, DecryptedNoteValue>;
+/* Note hash => StoredNote */
+type StoredNotesByNoteHash = Map<Buffer, StoredNote>;
 
-/* Asset ID => AssetNotesByNoteHash */
-type AssetContentByAssetId = Map<Buffer, AssetNotesByNoteHash>;
+/* Asset ID => StoredNotesByNoteHash */
+type AssetContentByAssetId = Map<Buffer, StoredNotesByNoteHash>;
 
 interface AccountData {
   key: Key;
@@ -191,6 +191,7 @@ export class AccountsManager {
     for (const publicKey of this.accounts.keys()) {
       // Get account data for public key
       const account = this.accounts.get(publicKey);
+
       if (!account) return;
 
       // Decrypt note using view key
@@ -201,30 +202,30 @@ export class AccountsManager {
       // If no result, note is not for this account
       if (!decryptedNoteBuffer) return;
 
-      const foundNote = Note.deserialize(decryptedNoteBuffer);
+      const deserializedNote = Note.deserialize(decryptedNoteBuffer);
 
       // Get asset id and amount for note
-      const assetId = foundNote.assetId();
+      const assetId = deserializedNote.assetId();
 
-      // If asset id does not exist, create it
+      // If asset id does not exist, create a new entry for it
       if (!account.assets.has(assetId)) {
         account.assets.set(assetId, new Map());
       }
 
       const assetContent = account.assets.get(assetId)!;
 
-      const nullifier = foundNote.nullifier(
+      const nullifier = deserializedNote.nullifier(
         account.key.viewKey,
         BigInt(position),
       );
 
-      account.assetIdByNoteHash.set(foundNote.hash(), assetId);
-      account.noteHashByNullifier.set(nullifier, foundNote.hash());
+      account.assetIdByNoteHash.set(deserializedNote.hash(), assetId);
+      account.noteHashByNullifier.set(nullifier, deserializedNote.hash());
 
       // Register note
-      assetContent.set(foundNote.hash(), {
+      assetContent.set(deserializedNote.hash(), {
         accountId: publicKey,
-        note: foundNote,
+        note: deserializedNote,
         spent: false,
         transactionHash: tx.hash,
         index,
@@ -255,8 +256,6 @@ export class AccountsManager {
 
       if (!note) return;
 
-      account.assetIdByNoteHash.delete(noteHash);
-      account.noteHashByNullifier.delete(spend.nf);
       note.spent = true;
     }
   }
@@ -279,15 +278,12 @@ export class AccountsManager {
           // If we found a note hash, the following should exist.
           const assetId = account.assetIdByNoteHash.get(noteHash);
           const assetContent = assetId && account.assets.get(assetId);
-          const decryptedNote = assetContent && assetContent.get(noteHash);
+          const storedNote = assetContent && assetContent.get(noteHash);
 
-          if (!assetId || !assetContent || !decryptedNote) return;
+          if (!assetId || !assetContent || !storedNote) return;
 
-          // Since we're undoing a spend, we need to update the mappings,
-          // and mark the note as unspent.
-          account.assetIdByNoteHash.set(noteHash, assetId);
-          account.noteHashByNullifier.set(decryptedNote.nullifier, noteHash);
-          decryptedNote.spent = false;
+          // Since we're undoing a spend, we need to mark the note as unspent.
+          storedNote.spent = false;
         });
 
         // Next we'll process outputs
