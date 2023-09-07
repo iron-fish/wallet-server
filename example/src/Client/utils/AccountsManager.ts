@@ -6,6 +6,7 @@ import {
   NoteEncrypted,
   Note,
 } from "@ironfish/rust-nodejs";
+import { BufferMap } from "buffer-map";
 import { BlockCache } from "./BlockCache";
 import {
   LightBlock,
@@ -26,10 +27,10 @@ export interface StoredNote {
 }
 
 /* Note hash => StoredNote */
-type StoredNotesByNoteHash = Map<Buffer, StoredNote>;
+type StoredNotesByNoteHash = BufferMap<StoredNote>;
 
 /* Asset ID => StoredNotesByNoteHash */
-type AssetContentByAssetId = Map<Buffer, StoredNotesByNoteHash>;
+type AssetContentByAssetId = BufferMap<StoredNotesByNoteHash>;
 
 interface AccountData {
   key: Key;
@@ -41,9 +42,9 @@ interface AccountData {
    * get its asset id from `assetIdByNoteHash`. We can then get the note from the asset content and mark it as spent.
    */
   /** Nullifier => Note hash */
-  noteHashByNullifier: Map<Buffer, Buffer>;
+  noteHashByNullifier: BufferMap<Buffer>;
   /** Note hash => Asset ID */
-  assetIdByNoteHash: Map<Buffer, Buffer>;
+  assetIdByNoteHash: BufferMap<Buffer>;
 }
 
 export class AccountsManager {
@@ -141,9 +142,9 @@ export class AccountsManager {
       {
         key,
         head: 0,
-        assets: new Map(),
-        assetIdByNoteHash: new Map(),
-        noteHashByNullifier: new Map(),
+        assets: new BufferMap(),
+        assetIdByNoteHash: new BufferMap(),
+        noteHashByNullifier: new BufferMap(),
       },
     ];
   }
@@ -209,7 +210,7 @@ export class AccountsManager {
 
       // If asset id does not exist, create a new entry for it
       if (!account.assets.has(assetId)) {
-        account.assets.set(assetId, new Map());
+        account.assets.set(assetId, new BufferMap());
       }
 
       const assetContent = account.assets.get(assetId)!;
