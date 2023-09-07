@@ -37,7 +37,7 @@ interface AccountData {
   assets: AssetContentByAssetId;
   /* Note hash => Asset ID */
   assetIdByNoteHash: Map<Buffer, Buffer>;
-  /* Note hash => Nullifier */
+  /* Nullifier => Note hash  */
   noteHashByNullifier: Map<Buffer, Buffer>;
 }
 
