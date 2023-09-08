@@ -187,11 +187,11 @@ export class BlockProcessor {
       return false;
     }
 
-    // Otherwise, we have to walk back the chain until we find the last valid block.
-    let lastValidBlock: LightBlock | null = null;
+    // Otherwise, we have to walk back the chain until we find the last main chain block.
+    let lastMainChainBlock: LightBlock | null = null;
     let currentSequence = block.sequence - 1;
 
-    while (!lastValidBlock) {
+    while (!lastMainChainBlock) {
       // Get block from server
       const [err, block] = await this._getBlockBySequence(currentSequence);
 
@@ -206,7 +206,7 @@ export class BlockProcessor {
 
       // If the two blocks' hash matches, we've found the last valid block.
       if (block.hash === cachedBlock.hash) {
-        lastValidBlock = cachedBlock;
+        lastMainChainBlock = cachedBlock;
         break;
       }
 
@@ -220,12 +220,12 @@ export class BlockProcessor {
     }
 
     const invalidBlocks = await this.blockCache.getBlockRange(
-      lastValidBlock.sequence + 1,
+      lastMainChainBlock.sequence + 1,
     );
 
     await this.accountsManager.handleReorg(invalidBlocks);
-    await this.blockCache.handleReorg(lastValidBlock);
-    await revertToNoteSize(lastValidBlock.noteSize);
+    await this.blockCache.handleReorg(lastMainChainBlock);
+    await revertToNoteSize(lastMainChainBlock.noteSize);
 
     return true;
   }

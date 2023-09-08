@@ -61,8 +61,8 @@ export class BlockCache {
     return LightBlock.decode(blockData);
   }
 
-  public async handleReorg(lastValidBlock: LightBlock) {
-    const newHeadSequence = lastValidBlock.sequence;
+  public async handleReorg(lastMainChainBlock: LightBlock) {
+    const newHeadSequence = lastMainChainBlock.sequence;
     const prevHeadSequence = await this.getHeadSequence();
 
     if (newHeadSequence >= prevHeadSequence) {
@@ -79,7 +79,7 @@ export class BlockCache {
 
     await this.db.batch(keysToDelete.map((key) => ({ type: "del", key })));
 
-    await this.cacheBlock(lastValidBlock);
+    await this.cacheBlock(lastMainChainBlock);
   }
 
   public async getBlockRange(

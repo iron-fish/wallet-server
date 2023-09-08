@@ -122,7 +122,12 @@ export class AccountsManager {
 
     for (const [assetId, assetContent] of account.assets) {
       const notes = Array.from(assetContent.values());
-      const value = notes.reduce((a, b) => a + b.note.value(), 0n);
+      const value = notes.reduce((acc, curr) => {
+        if (curr.spent) {
+          return acc;
+        }
+        return acc + curr.note.value();
+      }, 0n);
       assetValues[assetId.toString("hex")] = Number(value);
     }
 
@@ -235,13 +240,29 @@ export class AccountsManager {
         sequence: block.sequence,
       });
 
-      logThrottled(
+      const logged = logThrottled(
         `Account ${publicKey} has ${
           assetContent.size
         } notes for asset ${assetId.toString("hex")}`,
         10,
         assetContent.size,
       );
+
+      if (logged) {
+        const balances = this.getAssetValuesForAccount(publicKey);
+
+        console.log(
+          "Current balances:\n",
+          balances
+            ? Object.entries(balances)
+                .map(
+                  ([assetId, balance]) =>
+                    `Asset:  ${assetId}\n Balance: ${balance}\n\n`,
+                )
+                .join("\n")
+            : "No balances found",
+        );
+      }
     }
   }
 
@@ -252,10 +273,11 @@ export class AccountsManager {
       if (!noteHash) return;
 
       const assetId = account.assetIdByNoteHash.get(noteHash);
+      const assetContent = assetId && account.assets.get(assetId);
 
-      if (!assetId) return;
+      if (!assetId || !assetContent) return;
 
-      const note = account.assets.get(assetId)?.get(noteHash);
+      const note = assetContent.get(noteHash);
 
       if (!note) return;
 
