@@ -236,7 +236,9 @@ export class AccountsManager {
       });
 
       logThrottled(
-        `Account ${publicKey} has ${assetContent.size} notes for asset ${assetId}`,
+        `Account ${publicKey} has ${
+          assetContent.size
+        } notes for asset ${assetId.toString("hex")}`,
         10,
         assetContent.size,
       );
