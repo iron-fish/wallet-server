@@ -56,8 +56,9 @@ export class BlockCache {
     return Number(key);
   }
 
-  public getBlockBySequence(sequence: number): Promise<LightBlock> {
-    return this.db.get(this.encodeKey(sequence));
+  public async getBlockBySequence(sequence: number): Promise<LightBlock> {
+    const blockData = await this.db.get(this.encodeKey(sequence));
+    return LightBlock.decode(blockData);
   }
 
   public async handleReorg(lastValidBlock: LightBlock) {

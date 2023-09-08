@@ -126,8 +126,10 @@ export class BlockProcessor {
 
     try {
       await new Promise((res) => {
-        stream.on("data", (block: LightBlock) => {
-          this._processBlock(block);
+        stream.on("data", async (block: LightBlock) => {
+          stream.pause();
+          await this._processBlock(block);
+          stream.resume();
           blocksProcessed++;
 
           logThrottled(
@@ -156,7 +158,7 @@ export class BlockProcessor {
       return;
     }
 
-    this.blockCache.cacheBlock(block);
+    await this.blockCache.cacheBlock(block);
 
     const notes: Buffer[] = [];
 
@@ -175,13 +177,13 @@ export class BlockProcessor {
       return false;
     }
 
-    const prevBlock = await this.blockCache.getBlockBySequence(
+    const prevCachedBlock = await this.blockCache.getBlockBySequence(
       block.sequence - 1,
     );
 
     // If the incoming block's previous block hash matches the previous block's hash,
-    // there is no reorg.
-    if (block.previousBlockHash === prevBlock.hash) {
+    // there is no reorg. Note that Buffer.compare returns 0 if the two buffers are equal.
+    if (block.previousBlockHash.compare(prevCachedBlock.hash) === 0) {
       return false;
     }
 
