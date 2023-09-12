@@ -50,11 +50,11 @@ The `BlockCache`, `AccountsManager` and merkle tree all also have a way to handl
 
 ## Requesting blocks, and adding notes to the merkle tree
 
-When the client is started, it first has the `BlockProcessor` request blocks from the server in batches. As blocks come in, it processes them in turn, adding each block to the block cache, and then adding the block's notes to the merkle tree.
+When the client is started, it first has the `BlockProcessor` request blocks from the server in batches. As blocks are streamed from the wallet-server, it processes them in turn, adding each block to the block cache, and then adding the block's notes to the merkle tree.
 
 This is done as follows:
 
-- First, [`_pollForNewBlocks()`](./src/Client/utils/BlockProcessor.ts#L64) figures out what blocks (if any) we need to request. If we're starting the client for the first time, we must process the entire chain. If we're processed blocks before, we only need to request the blocks that have been added since the last time we processed blocks.
+- First, [`_pollForNewBlocks()`](./src/Client/utils/BlockProcessor.ts#L64) figures out what blocks (if any) we need to request. If we're starting the client for the first time, we must process the entire chain. If we have processed blocks before, we only need to request the blocks that have been added since the last time we processed blocks.
 - If we have blocks that must be requested, we call [`_processBlockRange()`](./src/Client/utils/BlockProcessor.ts#L113) with the start and end heights of the blocks we need to request. This function requests the blocks from the server, and calls [`_processBlock()`](./src/Client/utils/BlockProcessor.ts#L154) on each block as they come in.
 - [`_processBlock()`](./src/Client/utils/BlockProcessor.ts#L154) first adds the block to the block cache, and then calls it iterates through all notes in the block and adds them to the merkle tree.
 
@@ -62,17 +62,17 @@ Once all blocks are processed, we can move on to accounts. But first, let's take
 
 ## Caching blocks
 
-It's not strictly necessary for a client to cache blocks, but in our opinion is is highly recommended. This is because historical blocks are needed when a new account is added. If the client does not have the blocks cached, it will need to request them from the server again.
+It's not strictly necessary for a client to cache blocks, but in our opinion is is highly recommended. This is because historical blocks are needed when a new account is added. If the client does not have the blocks cached, it will need to re-request them from the server.
 
 We've implemented a simple block cache using LevelDB. This is done in the [`BlockCache`](./src/Client/utils/BlockCache.ts) class. As blocks come in, they are added to the block cache. When a new account is added, the block cache is used to get the blocks needed to determine the notes and spends that are relevant to the account, rather than requesting them from the server again.
 
 ## Building the merkle tree
 
-The merkle tree code is instantiated in [`merkle.ts`](./src/Client/utils/merkle.ts). Currently, the example client uses imports from the `@ironfish/sdk` package to build the merkle tree. Note that this works for a client that ???, it won't work in certain environments such as the browser. We're looking into ways to make merkle tree generation possible in browser environments, and we will update this project as we make progress.
+The merkle tree code is instantiated in [`merkle.ts`](./src/Client/utils/merkle.ts). Currently, the example client uses imports from the `@ironfish/sdk` package to build the merkle tree. Note that this currently only works for nodejs clients, which means it won't work in certain environments such as the browser. The merkle tree itself does not need to be tied to nodejs or `@ironfish/sdk`, but we have not split the implementation into a separate package. Moreover, it entirely possible to write a completely separate merkle tree implementation in any language.
 
 ## Managing accounts
 
-Once blocks have been processed, the client is ready to add accounts. In order to provide the functionality a user would expect of a cryptocurrency wallet, the client must be able to:
+Once blocks have been processed and the merkle tree is populated, the client is ready to add accounts. In order to provide the functionality a user would expect of a cryptocurrency wallet, the client must be able to:
 
 - Add multiple accounts
 - View the balance of each account
@@ -115,7 +115,15 @@ To say this in a simpler manner, an account's balance for a given asset is the s
 
 ### Sending transactions
 
-TBD
+To send a transaction we need to do a few things:
+- Create a transaction
+- Fund the transaction
+  - Take notes that are unspent from the account and use them to fund the transaction
+  - Calculate the witness for the spent notes
+- Add outputs (notes) for who will receive the funds
+- Post the transaction
+
+All of these steps are outlined in a [working example of a send](./src/Client/utils/send.ts)
 
 ## Handling block reorgs
 
