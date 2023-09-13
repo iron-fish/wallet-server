@@ -28,3 +28,5 @@ export const addNotesToMerkleTree = async (notes: Buffer[]) => {
 export const revertToNoteSize = async (noteSize: number) => {
   await notesTree.truncate(noteSize);
 };
+
+export const getNotesTreeSize = () => notesTree.size();
