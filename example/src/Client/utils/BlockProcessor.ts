@@ -89,8 +89,8 @@ export class BlockProcessor {
 
     const batchSize = process.env["BLOCK_PROCESSING_BATCH_SIZE"]
       ? parseInt(process.env["BLOCK_PROCESSING_BATCH_SIZE"])
-      : 100;
-    for (let i = cachedHeadSequence; i < headSequence; i += batchSize) {
+      : 99;
+    for (let i = cachedHeadSequence + 1; i < headSequence; i += batchSize + 1) {
       await this._processBlockRange(i, Math.min(i + batchSize, headSequence));
     }
     return;
@@ -125,7 +125,6 @@ export class BlockProcessor {
         sequence: endSequence,
       },
     });
-    console.log(startSequence, endSequence);
 
     try {
       await new Promise((res) => {

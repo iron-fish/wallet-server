@@ -16,7 +16,9 @@ export class BlockCache {
   private db: LevelUp;
 
   constructor() {
-    this.db = levelup(leveldown(path.join(__dirname, "client-block-cache")));
+    this.db = levelup(
+      leveldown(path.join(process.cwd(), "client-block-cache")),
+    );
   }
 
   public async getHeadSequence() {
@@ -28,7 +30,7 @@ export class BlockCache {
       }
       return asNumber;
     } catch (_err) {
-      return 1;
+      return 0;
     }
   }
 

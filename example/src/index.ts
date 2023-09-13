@@ -22,10 +22,10 @@ async function main() {
   }
 
   const client = new Client();
-  // void client.start();
-  // console.log("Client started")
-  // void client.waitForProcessorSync();
-  // console.log("Processor synced");
+  void client.start();
+  console.log("Client started");
+  await client.waitForProcessorSync();
+  console.log("Processor synced");
 
   const publicAddress = client.addAccount(spendingKey);
   console.log("Added account");

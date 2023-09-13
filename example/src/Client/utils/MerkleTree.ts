@@ -7,7 +7,7 @@ import { NodeEncoding } from "@ironfish/sdk/build/src/merkletree/database/nodes"
 import { NoteEncrypted } from "@ironfish/sdk/build/src/primitives/noteEncrypted";
 import { Witness } from "@ironfish/sdk/build/src/merkletree/witness";
 
-const db = createDB({ location: "./testdb" });
+const db = createDB({ location: "./merkle-tree-cache" });
 db.open();
 
 export type MerkleWitness = Witness<NoteEncrypted, Buffer, Buffer, Buffer>;
