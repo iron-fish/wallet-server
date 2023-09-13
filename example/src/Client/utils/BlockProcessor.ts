@@ -8,7 +8,11 @@ import {
   LightBlock,
   LightStreamerClient,
 } from "../../../../src/models/lightstreamer";
-import { addNotesToMerkleTree, revertToNoteSize } from "./merkle";
+import {
+  addNotesToMerkleTree,
+  getNotesTreeSize,
+  revertToNoteSize,
+} from "./merkle";
 import { logThrottled } from "./logThrottled";
 import { AccountsManager } from "./AccountsManager";
 
@@ -158,8 +162,6 @@ export class BlockProcessor {
       return;
     }
 
-    await this.blockCache.cacheBlock(block);
-
     const notes: Buffer[] = [];
 
     for (const transaction of block.transactions) {
@@ -168,7 +170,16 @@ export class BlockProcessor {
       }
     }
 
+    const prevBlockNoteSize = block.noteSize - notes.length;
+    const notesTreeSize = await getNotesTreeSize();
+
+    if (notesTreeSize > prevBlockNoteSize) {
+      await revertToNoteSize(prevBlockNoteSize);
+    }
+
     await addNotesToMerkleTree(notes);
+
+    await this.blockCache.cacheBlock(block);
   }
 
   private async _checkForReorg(block: LightBlock) {
