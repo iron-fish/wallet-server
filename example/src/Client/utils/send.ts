@@ -82,7 +82,7 @@ async function fundTransaction(
     ) {
       continue;
     }
-    const witness = await notesTree.witness(note.merkleIndex, 130379);
+    const witness = await notesTree.witness(note.merkleIndex);
     console.log(
       note.note.hash().toString("hex"),
       note.sequence,

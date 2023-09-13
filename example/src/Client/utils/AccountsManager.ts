@@ -53,6 +53,7 @@ export class AccountsManager {
   /** Public key => AccountData */
   private accounts: Map<string, AccountData> = new Map();
   private events: EventEmitter = new EventEmitter();
+  private synced = false;
 
   constructor(blockCache: BlockCache) {
     this.blockCache = blockCache;
@@ -64,22 +65,23 @@ export class AccountsManager {
     return accountData[0];
   }
 
-  public syncAccounts() {
-    this.blockCache
-      .createReadStream()
-      .on("data", ({ key, value }: { key: string; value: Buffer }) => {
-        const sequenceKey = this.blockCache.decodeKey(key);
-        if (!sequenceKey) {
-          return;
-        }
-        if (sequenceKey > 1765) {
+  public syncAccounts(): Promise<void> {
+    return new Promise((resolve) => {
+      this.blockCache
+        .createReadStream()
+        .on("data", ({ key, value }: { key: string; value: Buffer }) => {
+          const sequenceKey = this.blockCache.decodeKey(key);
+          if (!sequenceKey) {
+            return;
+          }
+          console.log(`Processing accounts for block ${sequenceKey}`);
+          this._processBlockForTransactions(value);
+        })
+        .on("end", () => {
+          resolve();
           this.events.emit("accounts-updated");
-          return;
-        }
-        console.log(`Processing accounts for block ${sequenceKey}`);
-        this._processBlockForTransactions(value);
-        this.events.emit("accounts-updated");
-      });
+        });
+    });
   }
 
   public waitForAccountSync(
@@ -87,30 +89,27 @@ export class AccountsManager {
     sequence: number,
   ): Promise<void> {
     return new Promise((resolve, reject) => {
-      const checkSequence = () => {
+      // Check initially
+      if (this.synced) {
+        resolve();
+      }
+
+      // Listen for account updates
+      this.events.once("accounts-updated", () => {
         const accountData = this.accounts.get(publicAddress);
         if (!accountData) {
-          this.events.removeListener("accounts-updated", checkSequence);
-          return reject(
+          reject(
             new Error(`Account with public address ${publicAddress} not found`),
           );
+          return;
         }
         logThrottled(
           `Waiting for account sync to complete, ${accountData.head}/${sequence}`,
           1000,
           accountData.head,
         );
-        if (accountData.head >= 1765) {
-          this.events.removeListener("accounts-updated", checkSequence);
-          return resolve();
-        }
-      };
-
-      // Check initially
-      checkSequence();
-
-      // Listen for account updates
-      this.events.on("accounts-updated", checkSequence);
+        resolve();
+      });
     });
   }
 
