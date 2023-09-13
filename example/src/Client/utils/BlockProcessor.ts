@@ -125,7 +125,6 @@ export class BlockProcessor {
         sequence: endSequence,
       },
     });
-    console.log(startSequence, endSequence);
 
     const resolveWhenDone = (resolve: (value: unknown) => void) => {
       if (blocksProcessed === endSequence + 1) {
