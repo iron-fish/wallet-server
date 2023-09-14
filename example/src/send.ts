@@ -1,5 +1,4 @@
 import { Client } from "./Client/Client";
-import { createTransaction } from "./Client/utils/send";
 import { generateKeyFromPrivateKey } from "@ironfish/rust-nodejs";
 
 export async function send(
@@ -20,7 +19,7 @@ export async function send(
   if (!account) {
     throw new Error(`Account not found for intput spending key`);
   }
-  const transaction = await createTransaction(
+  const transaction = await client.createTransaction(
     account,
     { publicAddress: toPublicAddress },
     BigInt(amount),
