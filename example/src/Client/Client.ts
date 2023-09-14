@@ -1,5 +1,9 @@
-import { credentials } from "@grpc/grpc-js";
-import { LightStreamerClient } from "../../../src/models/lightstreamer";
+import { ServiceError, credentials } from "@grpc/grpc-js";
+import {
+  LightStreamerClient,
+  SendResponse,
+  Transaction,
+} from "../../../src/models/lightstreamer";
 import { BlockProcessor } from "./utils/BlockProcessor";
 import { AccountData, AccountsManager } from "./utils/AccountsManager";
 import { BlockCache } from "./utils/BlockCache";
@@ -166,5 +170,16 @@ export class Client {
       );
     }
     return notesToSpend;
+  }
+
+  public async sendTransaction(transaction: Buffer) {
+    return new Promise<[ServiceError | null, SendResponse]>((res) => {
+      client.sendTransaction(
+        Transaction.create({ data: transaction }),
+        (error, result) => {
+          res([error, result]);
+        },
+      );
+    });
   }
 }

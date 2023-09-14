@@ -31,4 +31,10 @@ export async function send(
 
   console.log("Posted transaction:");
   console.log(posted.toString("hex"));
+
+  const [error, result] = await client.sendTransaction(posted);
+  if (error) {
+    console.error(error);
+  }
+  console.log(`Sent transaction, result: ${JSON.stringify(result)}`);
 }

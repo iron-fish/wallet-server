@@ -74,7 +74,11 @@ export class AccountsManager {
           if (!sequenceKey) {
             return;
           }
-          console.log(`Processing accounts for block ${sequenceKey}`);
+          logThrottled(
+            `Processing accounts for block ${sequenceKey}`,
+            1000,
+            sequenceKey,
+          );
           this._processBlockForTransactions(value);
         })
         .on("end", () => {
