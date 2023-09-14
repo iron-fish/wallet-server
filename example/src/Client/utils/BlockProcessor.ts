@@ -12,7 +12,7 @@ import {
   addNotesToMerkleTree,
   getNotesTreeSize,
   revertToNoteSize,
-} from "./merkle";
+} from "./MerkleTree";
 import { logThrottled } from "./logThrottled";
 import { AccountsManager } from "./AccountsManager";
 
@@ -111,11 +111,11 @@ export class BlockProcessor {
       });
     });
   }
-
   private async _processBlockRange(startSequence: number, endSequence: number) {
     console.log(`Processing blocks from ${startSequence} to ${endSequence}`);
 
     let blocksProcessed = startSequence;
+    let processingChain = Promise.resolve(); // Initialize a Promise chain
 
     const stream = this.client.getBlockRange({
       start: {
@@ -126,27 +126,42 @@ export class BlockProcessor {
       },
     });
 
-    try {
-      await new Promise((res) => {
-        stream.on("data", async (block: LightBlock) => {
-          stream.pause();
-          await this._processBlock(block);
-          stream.resume();
-          blocksProcessed++;
+    const resolveWhenDone = (resolve: (value: unknown) => void) => {
+      if (blocksProcessed === endSequence + 1) {
+        resolve(true);
+        console.log("Finished processing blocks");
+      }
+    };
 
-          logThrottled(
-            `Processed ${blocksProcessed}/${endSequence} blocks`,
-            100,
-            blocksProcessed,
-          );
+    try {
+      await new Promise((res, rej) => {
+        stream.on("data", (block: LightBlock) => {
+          // Append the next block's processing to the promise chain
+          processingChain = processingChain
+            .then(() => this._processBlock(block))
+            .then(() => {
+              blocksProcessed++;
+              logThrottled(
+                `Processed ${blocksProcessed}/${endSequence} blocks`,
+                100,
+                blocksProcessed,
+              );
+              resolveWhenDone(res); // Check if all blocks have been processed
+            })
+            .catch((err) => {
+              console.error("Error processing block:", err);
+              rej(err);
+            });
         });
 
         stream.on("end", () => {
-          res(true);
+          resolveWhenDone(res); // Check if all blocks have been processed
+        });
+
+        stream.on("error", (err) => {
+          rej(err);
         });
       });
-
-      console.log("Finished processing blocks");
     } catch (err) {
       console.error(err);
     }

@@ -32,7 +32,7 @@ export async function createTransaction(
 
     const sendNote = new NativeNote(
       to.publicAddress,
-      amount,
+      sendAmount,
       memo,
       assetId,
       account.key.publicAddress,
@@ -83,14 +83,6 @@ async function fundTransaction(
       continue;
     }
     const witness = await notesTree.witness(note.merkleIndex);
-    console.log(
-      note.note.hash().toString("hex"),
-      note.sequence,
-      note.merkleIndex,
-      witness?.treeSize(),
-      witness?.rootHash,
-      note.note.value(),
-    );
     if (!witness) {
       console.warn(
         "Could not calculate witness for note: ",
