@@ -12,7 +12,7 @@ import {
   addNotesToMerkleTree,
   getNotesTreeSize,
   revertToNoteSize,
-} from "./merkle";
+} from "./MerkleTree";
 import { logThrottled } from "./logThrottled";
 import { AccountsManager } from "./AccountsManager";
 
@@ -42,7 +42,8 @@ export class BlockProcessor {
       return;
     }
 
-    this._pollForNewBlocks();
+    await this._pollForNewBlocks();
+    this.events.emit("blocks-processed");
 
     this.pollInterval = setInterval(
       this._pollForNewBlocks.bind(this),
@@ -55,12 +56,9 @@ export class BlockProcessor {
   }
 
   public waitForProcessorSync(): Promise<void> {
-    console.log("Waiting for processor to sync");
-    if (!this.isProcessingBlocks) {
-      return Promise.resolve();
-    }
     console.log("Processor is currently syncing. Waiting for it to finish");
     return new Promise((resolve) => {
+      console.log("Finished block syncing processor");
       this.events.once("blocks-processed", resolve);
     });
   }
@@ -91,11 +89,11 @@ export class BlockProcessor {
 
     const batchSize = process.env["BLOCK_PROCESSING_BATCH_SIZE"]
       ? parseInt(process.env["BLOCK_PROCESSING_BATCH_SIZE"])
-      : 100;
-    for (let i = cachedHeadSequence; i < headSequence; i += batchSize) {
+      : 99;
+    for (let i = cachedHeadSequence + 1; i < headSequence; i += batchSize + 1) {
       await this._processBlockRange(i, Math.min(i + batchSize, headSequence));
     }
-    this.isProcessingBlocks = false;
+    return;
   }
 
   private _getLatestBlock() {
@@ -113,11 +111,11 @@ export class BlockProcessor {
       });
     });
   }
-
   private async _processBlockRange(startSequence: number, endSequence: number) {
     console.log(`Processing blocks from ${startSequence} to ${endSequence}`);
 
     let blocksProcessed = startSequence;
+    let processingChain = Promise.resolve(); // Initialize a Promise chain
 
     const stream = this.client.getBlockRange({
       start: {
@@ -128,28 +126,42 @@ export class BlockProcessor {
       },
     });
 
-    try {
-      await new Promise((res) => {
-        stream.on("data", async (block: LightBlock) => {
-          stream.pause();
-          await this._processBlock(block);
-          stream.resume();
-          blocksProcessed++;
+    const resolveWhenDone = (resolve: (value: unknown) => void) => {
+      if (blocksProcessed === endSequence + 1) {
+        resolve(true);
+        console.log("Finished processing blocks");
+      }
+    };
 
-          logThrottled(
-            `Processed ${blocksProcessed}/${endSequence} blocks`,
-            100,
-            blocksProcessed,
-          );
+    try {
+      await new Promise((res, rej) => {
+        stream.on("data", (block: LightBlock) => {
+          // Append the next block's processing to the promise chain
+          processingChain = processingChain
+            .then(() => this._processBlock(block))
+            .then(() => {
+              blocksProcessed++;
+              logThrottled(
+                `Processed ${blocksProcessed}/${endSequence} blocks`,
+                100,
+                blocksProcessed,
+              );
+              resolveWhenDone(res); // Check if all blocks have been processed
+            })
+            .catch((err) => {
+              console.error("Error processing block:", err);
+              rej(err);
+            });
         });
 
         stream.on("end", () => {
-          this.events.emit("blocks-processed", endSequence);
-          res(true);
+          resolveWhenDone(res); // Check if all blocks have been processed
+        });
+
+        stream.on("error", (err) => {
+          rej(err);
         });
       });
-
-      console.log("Finished processing blocks");
     } catch (err) {
       console.error(err);
     }

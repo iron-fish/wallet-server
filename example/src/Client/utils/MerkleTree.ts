@@ -5,11 +5,14 @@ import { createDB } from "@ironfish/sdk/build/src/storage/utils";
 import { LeafEncoding } from "@ironfish/sdk/build/src/merkletree/database/leaves";
 import { NodeEncoding } from "@ironfish/sdk/build/src/merkletree/database/nodes";
 import { NoteEncrypted } from "@ironfish/sdk/build/src/primitives/noteEncrypted";
+import { Witness } from "@ironfish/sdk/build/src/merkletree/witness";
 
-const db = createDB({ location: "./testdb" });
+const db = createDB({ location: "./merkle-tree-cache" });
 db.open();
 
-const notesTree = new MerkleTree({
+export type MerkleWitness = Witness<NoteEncrypted, Buffer, Buffer, Buffer>;
+
+export const notesTree = new MerkleTree({
   hasher: new NoteHasher(),
   leafIndexKeyEncoding: BUFFER_ENCODING,
   leafEncoding: new LeafEncoding(),

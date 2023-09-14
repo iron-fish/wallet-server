@@ -21,6 +21,7 @@ export interface StoredNote {
   spent: boolean;
   transactionHash: Buffer;
   index: number;
+  merkleIndex: number;
   nullifier: Buffer;
   blockHash: Buffer;
   sequence: number;
@@ -32,7 +33,7 @@ type StoredNotesByNoteHash = BufferMap<StoredNote>;
 /* Asset ID => StoredNotesByNoteHash */
 type AssetContentByAssetId = BufferMap<StoredNotesByNoteHash>;
 
-interface AccountData {
+export interface AccountData {
   key: Key;
   head: number;
   assets: AssetContentByAssetId;
@@ -52,6 +53,7 @@ export class AccountsManager {
   /** Public key => AccountData */
   private accounts: Map<string, AccountData> = new Map();
   private events: EventEmitter = new EventEmitter();
+  private synced = false;
 
   constructor(blockCache: BlockCache) {
     this.blockCache = blockCache;
@@ -60,19 +62,26 @@ export class AccountsManager {
   public addAccount(privateKey: string) {
     const accountData = this._makeAccountData(privateKey);
     this.accounts.set(...accountData);
-
-    this.blockCache
-      .createReadStream()
-      .on("data", ({ key, value }: { key: string; value: Buffer }) => {
-        const sequenceKey = this.blockCache.decodeKey(key);
-        if (!sequenceKey) {
-          return;
-        }
-        this._processBlockForTransactions(value);
-        this.events.emit("accounts-updated");
-      });
-
     return accountData[0];
+  }
+
+  public syncAccounts(): Promise<void> {
+    return new Promise((resolve) => {
+      this.blockCache
+        .createReadStream()
+        .on("data", ({ key, value }: { key: string; value: Buffer }) => {
+          const sequenceKey = this.blockCache.decodeKey(key);
+          if (!sequenceKey) {
+            return;
+          }
+          console.log(`Processing accounts for block ${sequenceKey}`);
+          this._processBlockForTransactions(value);
+        })
+        .on("end", () => {
+          resolve();
+          this.events.emit("accounts-updated");
+        });
+    });
   }
 
   public waitForAccountSync(
@@ -80,31 +89,32 @@ export class AccountsManager {
     sequence: number,
   ): Promise<void> {
     return new Promise((resolve, reject) => {
-      const checkSequence = () => {
+      // Check initially
+      if (this.synced) {
+        resolve();
+      }
+
+      // Listen for account updates
+      this.events.once("accounts-updated", () => {
         const accountData = this.accounts.get(publicAddress);
         if (!accountData) {
-          this.events.removeListener("accounts-updated", checkSequence);
-          return reject(
+          reject(
             new Error(`Account with public address ${publicAddress} not found`),
           );
+          return;
         }
         logThrottled(
           `Waiting for account sync to complete, ${accountData.head}/${sequence}`,
           1000,
           accountData.head,
         );
-        if (accountData.head >= sequence) {
-          this.events.removeListener("accounts-updated", checkSequence);
-          return resolve();
-        }
-      };
-
-      // Check initially
-      checkSequence();
-
-      // Listen for account updates
-      this.events.on("accounts-updated", checkSequence);
+        resolve();
+      });
     });
+  }
+
+  public getAccount(publicKey: string) {
+    return this.accounts.get(publicKey);
   }
 
   public getPublicAddresses() {
@@ -236,6 +246,7 @@ export class AccountsManager {
         transactionHash: tx.hash,
         index,
         nullifier,
+        merkleIndex: position,
         blockHash: block.hash,
         sequence: block.sequence,
       });
