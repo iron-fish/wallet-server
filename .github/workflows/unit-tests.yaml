@@ -4,6 +4,9 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - main
 
 jobs:
   test:
@@ -27,4 +30,11 @@ jobs:
         run: npm install
 
       - name: Run tests
-        run: npm run test
+        run: |
+          if [ "${{ github.event.pull_request.head.repo.fork }}" == "true" ]; then
+            echo "PR is from a fork, running unit tests..."
+            npm run test-unit
+          else
+            echo "PR is not from a fork, running all tests..."
+            npm run test
+          fi
