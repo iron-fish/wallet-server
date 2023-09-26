@@ -1,4 +1,4 @@
-# `ironfish-wallet-server`
+# `ironfish-wallet-server` test
 
 The wallet server makes it possible to build/run a fully private light wallet (on nearly any device) without having to run a ironfish node locally. The implementation is a gRPC caching server that interacts with an [ironfish](https://github.com/iron-fish/ironfish) node to provide a cached interface for light wallet clients.  Running this server allows clients to use a generated gRPC client to make typesafe calls to the client server to request "LightBlocks". These blocks are minimal represenations of Iron Fish network blocks. We have included an [example light wallet client](example/README.md) implementation in this repo.
 
