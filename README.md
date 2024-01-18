@@ -18,6 +18,7 @@ The wallet server makes it possible to build/run a fully private light wallet (o
   - `NODE_AUTH_TOKEN` set to `cat ~/.ironfish/internal.json | jq -r '.rpcAuthToken'`
 - Run wallet server: from this repo root, run:
   - `yarn`
+  - `yarn build`
   - `yarn start`
 - Wait for wallet to sync before starting terminal session 3
 
