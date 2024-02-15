@@ -1,0 +1,2 @@
+FROM envoyproxy/envoy:v1.27-latest
+COPY ./gateway-envoy.yaml /etc/envoy/envoy.yaml
