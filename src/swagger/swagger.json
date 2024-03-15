@@ -1,0 +1,364 @@
+{
+	"openapi": "3.0.0",
+	"components": {
+		"examples": {},
+		"headers": {},
+		"parameters": {},
+		"requestBodies": {},
+		"responses": {},
+		"schemas": {
+			"LightSpend": {
+				"properties": {
+					"nf": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"nf"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"LightOutput": {
+				"properties": {
+					"note": {
+						"type": "string",
+						"description": "NoteEncrypted, serialized"
+					}
+				},
+				"required": [
+					"note"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"LightTransaction": {
+				"properties": {
+					"index": {
+						"type": "number",
+						"format": "double",
+						"description": "do we need this field?"
+					},
+					"hash": {
+						"type": "string"
+					},
+					"spends": {
+						"items": {
+							"$ref": "#/components/schemas/LightSpend"
+						},
+						"type": "array"
+					},
+					"outputs": {
+						"items": {
+							"$ref": "#/components/schemas/LightOutput"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"index",
+					"hash",
+					"spends",
+					"outputs"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"LightBlock": {
+				"properties": {
+					"protoVersion": {
+						"type": "number",
+						"format": "double",
+						"description": "the version of this wire format, for storage"
+					},
+					"sequence": {
+						"type": "number",
+						"format": "double",
+						"description": "the height of this block"
+					},
+					"hash": {
+						"type": "string",
+						"description": "the ID (hash) of this block, same as explorer"
+					},
+					"previousBlockHash": {
+						"type": "string",
+						"description": "the ID (hash) of this block's predecessor"
+					},
+					"timestamp": {
+						"type": "number",
+						"format": "double",
+						"description": "Unix epoch time when the block was mined"
+					},
+					"transactions": {
+						"items": {
+							"$ref": "#/components/schemas/LightTransaction"
+						},
+						"type": "array",
+						"description": "zero or more compact transactions from this block"
+					},
+					"noteSize": {
+						"type": "number",
+						"format": "double",
+						"description": "the size of the notes tree after adding transactions from this block."
+					}
+				},
+				"required": [
+					"protoVersion",
+					"sequence",
+					"hash",
+					"previousBlockHash",
+					"timestamp",
+					"transactions",
+					"noteSize"
+				],
+				"type": "object",
+				"additionalProperties": false
+			}
+		},
+		"securitySchemes": {}
+	},
+	"info": {
+		"title": "ironfish-wallet-server",
+		"version": "0.0.1",
+		"description": "Server that provides Iron Fish light clients access to the network.",
+		"license": {
+			"name": "MPL-2.0"
+		},
+		"contact": {
+			"name": "Iron Fish ",
+			"email": "contact@ironfish.network",
+			"url": "https://ironfish.network"
+		}
+	},
+	"paths": {
+		"/latest-block": {
+			"get": {
+				"operationId": "GetLatestBlock",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"hash": {
+											"type": "string"
+										},
+										"sequence": {
+											"type": "number",
+											"format": "double"
+										}
+									},
+									"required": [
+										"hash",
+										"sequence"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Block Controller"
+				],
+				"security": [],
+				"parameters": []
+			}
+		},
+		"/transaction": {
+			"post": {
+				"operationId": "PostTransaction",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"hash": {
+											"type": "string"
+										},
+										"accepted": {
+											"type": "boolean"
+										}
+									},
+									"required": [
+										"hash",
+										"accepted"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Block Controller"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "string"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/block": {
+			"get": {
+				"operationId": "GetBlock",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/LightBlock"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Block Controller"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "hash",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "sequence",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/block-range": {
+			"get": {
+				"operationId": "GetBlockRange",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/LightBlock"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Block Controller"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "start",
+						"required": true,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "end",
+						"required": true,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/server-info": {
+			"get": {
+				"operationId": "GetServerInfo",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"blockHash": {
+											"type": "string"
+										},
+										"blockHeight": {
+											"type": "number",
+											"format": "double"
+										},
+										"nodeStatus": {
+											"type": "string",
+											"enum": [
+												"started",
+												"stopped",
+												"error"
+											]
+										},
+										"nodeVersion": {
+											"type": "string"
+										},
+										"networkId": {
+											"type": "number",
+											"format": "double"
+										},
+										"vendor": {
+											"type": "string"
+										},
+										"version": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"blockHash",
+										"blockHeight",
+										"nodeStatus",
+										"nodeVersion",
+										"networkId",
+										"vendor",
+										"version"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Block Controller"
+				],
+				"security": [],
+				"parameters": []
+			}
+		}
+	},
+	"servers": [
+		{
+			"url": "/"
+		}
+	]
+}

@@ -5,7 +5,7 @@ message Empty {}
 
 message BlockID {
   optional uint64 sequence = 1;
-  optional bytes hash = 2;
+  optional string hash = 2;
 }
 
 // BlockRange specifies a series of blocks from start to end inclusive.
@@ -16,38 +16,40 @@ message BlockRange {
 }
 
 message LightBlock {
-  uint32 protoVersion = 1;     // the version of this wire format, for storage
-  uint64 sequence = 2;         // the height of this block
-  bytes hash = 3;              // the ID (hash) of this block, same as explorer
-  bytes previousBlockHash = 4; // the ID (hash) of this block's predecessor
-  uint32 timestamp = 5;        // Unix epoch time when the block was mined
-  repeated LightTransaction transactions =
-      6;               // zero or more compact transactions from this block
-  uint64 noteSize = 7; // the size of the notes tree after adding transactions
-                       // from this block.
+	uint32 protoVersion = 1;    // the version of this wire format, for storage
+  uint64 sequence = 2;          // the height of this block
+  string hash = 3;             // the ID (hash) of this block, same as explorer
+  string previousBlockHash = 4;         // the ID (hash) of this block's predecessor
+  uint32 timestamp = 5;            // Unix epoch time when the block was mined
+  repeated LightTransaction transactions = 6; // zero or more compact transactions from this block
+  uint64 noteSize = 7; // the size of the notes tree after adding transactions from this block.
+
 }
 
 message LightTransaction {
   uint64 index = 1; // do we need this field?
-  bytes hash = 2;
+  string hash = 2;
 
   repeated LightSpend spends = 4;
   repeated LightOutput outputs = 5;
 }
 
-message LightSpend { bytes nf = 2; }
+
+message LightSpend {
+  string nf = 2;
+}
 
 message LightOutput {
-  bytes note = 1; // NoteEncrypted, serialized
+  string note = 1; // NoteEncrypted, serialized
 }
 
 message Transaction {
   // built, encrypted transaction
-  bytes data = 1;
+  string data = 1;
 }
 
 message SendResponse {
-  bytes hash = 1;
+  string hash = 1;
   bool accepted = 2;
 }
 
@@ -59,12 +61,4 @@ message ServerInfo {
   string nodeStatus = 5;
   uint64 blockHeight = 6;
   string blockHash = 7;
-}
-
-service LightStreamer {
-  rpc GetServerInfo(Empty) returns (ServerInfo) {}
-  rpc GetLatestBlock(Empty) returns (BlockID) {}
-  rpc GetBlock(BlockID) returns (LightBlock) {}
-  rpc GetBlockRange(BlockRange) returns (stream LightBlock) {}
-  rpc SendTransaction(Transaction) returns (SendResponse) {}
 }

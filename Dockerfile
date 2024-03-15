@@ -16,8 +16,5 @@ COPY . .
 # Build the app
 RUN npm run build
 
-# Make port 50051 available to the outside 
-EXPOSE 50051
-
 # Define the command to run your app using CMD which defines your runtime
 CMD ["npm", "run", "start"]
