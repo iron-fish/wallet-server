@@ -1,4 +1,14 @@
-import { Route, Get, Post, Body, Query, Tags } from "tsoa";
+import {
+  Route,
+  Get,
+  Post,
+  Body,
+  Query,
+  Tags,
+  TsoaResponse,
+  Response,
+  Res,
+} from "tsoa";
 import { ifClient } from "../utils/ironfish"; // Adjust the import path as needed
 import { lightBlockCache } from "../cache"; // Adjust the import path as needed
 import { LightBlock } from "../models/lightstreamer";
@@ -17,13 +27,17 @@ export class BlockController {
   }
 
   @Post("transaction")
-  public async postTransaction(@Body() transaction: string) {
+  @Response<Error>("400", "Error broadcasting transaction")
+  public async postTransaction(
+    @Body() transaction: string,
+    @Res() err: TsoaResponse<400, { reason: string }>,
+  ) {
     const rpcClient = await ifClient.getClient();
     const response = await rpcClient.chain.broadcastTransaction({
       transaction,
     });
     if (!response.content) {
-      throw new Error("Error broadcasting transaction");
+      return err(400, { reason: "Either hash or sequence must be provided" });
     }
     return {
       accepted: response.content.accepted,
@@ -32,12 +46,16 @@ export class BlockController {
   }
 
   @Get("block")
+  @Response<Error>("400", "Either hash or sequence must be provided")
+  @Response<Error>("404", "Block not found")
   public async getBlock(
+    @Res() err400: TsoaResponse<400, { reason: string }>,
+    @Res() err404: TsoaResponse<404, { reason: string }>,
     @Query() hash?: string,
     @Query() sequence?: number,
   ): Promise<LightBlock> {
     if (!hash && !sequence) {
-      throw new Error("Either hash or sequence must be provided");
+      err400(400, { reason: "Either hash or sequence must be provided" });
     }
 
     let block = null;
@@ -62,7 +80,7 @@ export class BlockController {
     });
 
     if (!response) {
-      throw new Error("Block not found");
+      err404(404, { reason: "Block not found" });
     }
 
     return LightBlock.toJSON(
@@ -71,12 +89,16 @@ export class BlockController {
   }
 
   @Get("block-range")
+  @Response<Error>("400", "Invalid start or end parameters")
+  @Response<Error>("404", "No blocks found in the specified range")
   public async getBlockRange(
+    @Res() err400: TsoaResponse<400, { reason: string }>,
+    @Res() err404: TsoaResponse<404, { reason: string }>,
     @Query() start: number,
     @Query() end: number,
   ): Promise<LightBlock[]> {
     if (isNaN(start) || isNaN(end)) {
-      throw new Error("Invalid start or end parameters");
+      err400(400, { reason: "Invalid start or end parameters" });
     }
 
     // Implement the logic to fetch the block range
@@ -91,7 +113,7 @@ export class BlockController {
 
     // Handle cases where no blocks are found
     if (blocks.length === 0) {
-      throw new Error("No blocks found in the specified range");
+      err404(404, { reason: "No blocks found in the specified range" });
     }
 
     return blocks as LightBlock[];

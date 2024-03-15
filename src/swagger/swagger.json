@@ -7,6 +7,25 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
+			"Error": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"message": {
+						"type": "string"
+					},
+					"stack": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"name",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"LightSpend": {
 				"properties": {
 					"nf": {
@@ -174,18 +193,22 @@
 						"description": "Ok",
 						"content": {
 							"application/json": {
+								"schema": {}
+							}
+						}
+					},
+					"400": {
+						"description": "",
+						"content": {
+							"application/json": {
 								"schema": {
 									"properties": {
-										"hash": {
+										"reason": {
 											"type": "string"
-										},
-										"accepted": {
-											"type": "boolean"
 										}
 									},
 									"required": [
-										"hash",
-										"accepted"
+										"reason"
 									],
 									"type": "object"
 								}
@@ -220,6 +243,42 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/LightBlock"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"reason": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"reason"
+									],
+									"type": "object"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"reason": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"reason"
+									],
+									"type": "object"
 								}
 							}
 						}
@@ -263,6 +322,42 @@
 										"$ref": "#/components/schemas/LightBlock"
 									},
 									"type": "array"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"reason": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"reason"
+									],
+									"type": "object"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"reason": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"reason"
+									],
+									"type": "object"
 								}
 							}
 						}

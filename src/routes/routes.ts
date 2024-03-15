@@ -18,6 +18,16 @@ import type {
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
 const models: TsoaRoute.Models = {
+  Error: {
+    dataType: "refObject",
+    properties: {
+      name: { dataType: "string", required: true },
+      message: { dataType: "string", required: true },
+      stack: { dataType: "string" },
+    },
+    additionalProperties: false,
+  },
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
   LightSpend: {
     dataType: "refObject",
     properties: {
@@ -142,6 +152,13 @@ export function RegisterRoutes(app: Router) {
           required: true,
           dataType: "string",
         },
+        err: {
+          in: "res",
+          name: "400",
+          required: true,
+          dataType: "nestedObjectLiteral",
+          nestedProperties: { reason: { dataType: "string", required: true } },
+        },
       };
 
       // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
@@ -181,6 +198,20 @@ export function RegisterRoutes(app: Router) {
       next: any,
     ) {
       const args: Record<string, TsoaRoute.ParameterSchema> = {
+        err400: {
+          in: "res",
+          name: "400",
+          required: true,
+          dataType: "nestedObjectLiteral",
+          nestedProperties: { reason: { dataType: "string", required: true } },
+        },
+        err404: {
+          in: "res",
+          name: "404",
+          required: true,
+          dataType: "nestedObjectLiteral",
+          nestedProperties: { reason: { dataType: "string", required: true } },
+        },
         hash: { in: "query", name: "hash", dataType: "string" },
         sequence: { in: "query", name: "sequence", dataType: "double" },
       };
@@ -224,6 +255,20 @@ export function RegisterRoutes(app: Router) {
       next: any,
     ) {
       const args: Record<string, TsoaRoute.ParameterSchema> = {
+        err400: {
+          in: "res",
+          name: "400",
+          required: true,
+          dataType: "nestedObjectLiteral",
+          nestedProperties: { reason: { dataType: "string", required: true } },
+        },
+        err404: {
+          in: "res",
+          name: "404",
+          required: true,
+          dataType: "nestedObjectLiteral",
+          nestedProperties: { reason: { dataType: "string", required: true } },
+        },
         start: {
           in: "query",
           name: "start",
