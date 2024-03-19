@@ -96,7 +96,7 @@ export class BlockProcessor {
 
   private async _getBlockBySequence(sequence: number): Promise<LightBlock> {
     const response = await this.api.block.getBlock({ sequence });
-    return response.data;
+    return LightBlock.decode(Buffer.from(response.data, "hex"));
   }
   private async _processBlockRange(startSequence: number, endSequence: number) {
     console.log(`Processing blocks from ${startSequence} to ${endSequence}`);
@@ -109,7 +109,9 @@ export class BlockProcessor {
       const blocks = response.data;
       for (const block of blocks) {
         try {
-          await this._processBlock(LightBlock.fromJSON(block));
+          await this._processBlock(
+            LightBlock.decode(Buffer.from(block, "hex")),
+          );
         } catch (err) {
           console.error("Error processing block:", err);
           throw err;

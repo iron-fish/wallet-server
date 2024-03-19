@@ -28,59 +28,6 @@ const models: TsoaRoute.Models = {
     additionalProperties: false,
   },
   // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-  LightSpend: {
-    dataType: "refObject",
-    properties: {
-      nf: { dataType: "string", required: true },
-    },
-    additionalProperties: false,
-  },
-  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-  LightOutput: {
-    dataType: "refObject",
-    properties: {
-      note: { dataType: "string", required: true },
-    },
-    additionalProperties: false,
-  },
-  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-  LightTransaction: {
-    dataType: "refObject",
-    properties: {
-      index: { dataType: "double", required: true },
-      hash: { dataType: "string", required: true },
-      spends: {
-        dataType: "array",
-        array: { dataType: "refObject", ref: "LightSpend" },
-        required: true,
-      },
-      outputs: {
-        dataType: "array",
-        array: { dataType: "refObject", ref: "LightOutput" },
-        required: true,
-      },
-    },
-    additionalProperties: false,
-  },
-  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-  LightBlock: {
-    dataType: "refObject",
-    properties: {
-      protoVersion: { dataType: "double", required: true },
-      sequence: { dataType: "double", required: true },
-      hash: { dataType: "string", required: true },
-      previousBlockHash: { dataType: "string", required: true },
-      timestamp: { dataType: "double", required: true },
-      transactions: {
-        dataType: "array",
-        array: { dataType: "refObject", ref: "LightTransaction" },
-        required: true,
-      },
-      noteSize: { dataType: "double", required: true },
-    },
-    additionalProperties: false,
-  },
-  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 };
 const templateService = new ExpressTemplateService(models, {
   noImplicitAdditionalProperties: "throw-on-extras",
@@ -276,12 +223,6 @@ export function RegisterRoutes(app: Router) {
           dataType: "double",
         },
         end: { in: "query", name: "end", required: true, dataType: "double" },
-        binary: {
-          default: false,
-          in: "query",
-          name: "binary",
-          dataType: "boolean",
-        },
       };
 
       // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa

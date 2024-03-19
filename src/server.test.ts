@@ -4,6 +4,7 @@ configDotEnv();
 import request from "supertest";
 import { app, server } from "./server";
 import { lightBlockCache } from "./cache";
+import { LightBlock } from "./models/lightstreamer";
 
 const expectedBlockObject = {
   protoVersion: expect.any(Number),
@@ -46,7 +47,8 @@ describe("GET /block", () => {
 
     const response = await request(app).get(`/block?sequence=1`);
     expect(response.statusCode).toBe(200);
-    expect(response.body).toMatchObject(expectedBlockObject);
+    const block = LightBlock.decode(Buffer.from(response.body, "hex"));
+    expect(block).toMatchObject(expectedBlockObject);
   });
   it("should handle invalid range parameters", async () => {
     const response = await request(app).get("/block?seqtypo=1");
@@ -61,9 +63,10 @@ describe("GET /block-range", () => {
     const response = await request(app).get("/block-range?start=1&end=10");
     expect(response.statusCode).toBe(200);
     expect(response.body).toHaveLength(10);
-    expect(response.body).toEqual(
-      expect.arrayContaining([expectedBlockObject]),
+    const data = response.body.map((hex: string) =>
+      LightBlock.decode(Buffer.from(hex, "hex")),
     );
+    expect(data).toEqual(expect.arrayContaining([expectedBlockObject]));
   });
 
   it("should return binary hex if prompted", async () => {
@@ -74,7 +77,8 @@ describe("GET /block-range", () => {
     );
     expect(response.statusCode).toBe(200);
     expect(response.body).toHaveLength(10);
-    expect(() => Buffer.from(response.body[0], "hex")).not.toThrow();
+    const block = LightBlock.decode(Buffer.from(response.body[0], "hex"));
+    expect(block).toEqual(expectedBlockObject);
   });
 
   it("should handle invalid range parameters", async () => {

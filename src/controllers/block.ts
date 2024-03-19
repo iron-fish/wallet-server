@@ -16,6 +16,9 @@ import { LightBlock } from "../models/lightstreamer";
 @Route("/")
 @Tags("Block Controller")
 export class BlockController {
+  /**
+   * Retrieves the latest block on the remote node, the block hash and sequence number.
+   */
   @Get("latest-block")
   public async getLatestBlock() {
     const rpcClient = await ifClient.getClient();
@@ -26,6 +29,11 @@ export class BlockController {
     };
   }
 
+  /**
+   * Broadcasts a transaction to the network. Input is a
+   * @param transaction The hex encoded string `Transaction` to broadcast
+   * @returns if the transaction was accepted, the hash of the transaction
+   */
   @Post("transaction")
   @Response<Error>("400", "Error broadcasting transaction")
   public async broadcastTransaction(
@@ -45,6 +53,13 @@ export class BlockController {
     };
   }
 
+  /**
+   * Retrieves a block from the network. The block can be specified by its hash or sequence number.
+   * If neither is provided, a 400 error is returned. If the block is not found, a 404 error is returned.
+   * @param hash The hash of the block to retrieve
+   * @param sequence The sequence number of the block to retrieve
+   * @returns The hex encoded string representation of the block
+   */
   @Get("block")
   @Response<Error>("400", "Either hash or sequence must be provided")
   @Response<Error>("404", "Block not found")
@@ -53,7 +68,7 @@ export class BlockController {
     @Res() err404: TsoaResponse<404, { reason: string }>,
     @Query() hash?: string,
     @Query() sequence?: number,
-  ): Promise<LightBlock> {
+  ): Promise<string> {
     if (!hash && !sequence) {
       err400(400, { reason: "Either hash or sequence must be provided" });
     }
@@ -66,7 +81,7 @@ export class BlockController {
     }
 
     if (block) {
-      return LightBlock.toJSON(block) as LightBlock;
+      return Buffer.from(LightBlock.encode(block).finish()).toString("hex");
     }
 
     // fallback to rpc
@@ -83,11 +98,18 @@ export class BlockController {
       err404(404, { reason: "Block not found" });
     }
 
-    return LightBlock.toJSON(
-      LightBlock.fromJSON(response.content),
-    ) as LightBlock;
+    return Buffer.from(
+      LightBlock.encode(LightBlock.fromJSON(response.content)).finish(),
+    ).toString("hex");
   }
 
+  /**
+   * Retrieves a range of blocks from the network. The range is specified by a start and end sequence number.
+   * If either start or end is invalid, a 400 error is returned. If no blocks are found in the specified range, a 404 error is returned.
+   * @param start The sequence number of the first block in the range to retrieve
+   * @param end The sequence number of the last block in the range to retrieve
+   * @returns An array of hex encoded string representations of the blocks
+   */
   @Get("block-range")
   @Response<Error>("400", "Invalid start or end parameters")
   @Response<Error>("404", "No blocks found in the specified range")
@@ -96,8 +118,7 @@ export class BlockController {
     @Res() err404: TsoaResponse<404, { reason: string }>,
     @Query() start: number,
     @Query() end: number,
-    @Query() binary: boolean = false,
-  ): Promise<LightBlock[] | string[]> {
+  ): Promise<string[]> {
     if (isNaN(start) || isNaN(end)) {
       err400(400, { reason: "Invalid start or end parameters" });
     }
@@ -117,16 +138,15 @@ export class BlockController {
       err404(404, { reason: "No blocks found in the specified range" });
     }
 
-    if (binary) {
-      return blocks.map((block) => {
-        const binaryBlock = LightBlock.encode(block).finish();
-        return Buffer.from(binaryBlock).toString("hex");
-      });
-    }
-
-    return blocks.map((block) => LightBlock.toJSON(block)) as LightBlock[];
+    return blocks.map((block) => {
+      const binaryBlock = LightBlock.encode(block).finish();
+      return Buffer.from(binaryBlock).toString("hex");
+    });
   }
 
+  /**
+   * Retrieves the server information, including the version, vendor, network ID, node version, node status, block height, and block hash.
+   */
   @Get("server-info")
   public async getServerInfo() {
     const rpcClient = await ifClient.getClient();

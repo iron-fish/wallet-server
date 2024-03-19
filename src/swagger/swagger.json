@@ -25,113 +25,6 @@
 				],
 				"type": "object",
 				"additionalProperties": false
-			},
-			"LightSpend": {
-				"properties": {
-					"nf": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"nf"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"LightOutput": {
-				"properties": {
-					"note": {
-						"type": "string",
-						"description": "NoteEncrypted, serialized"
-					}
-				},
-				"required": [
-					"note"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"LightTransaction": {
-				"properties": {
-					"index": {
-						"type": "number",
-						"format": "double",
-						"description": "do we need this field?"
-					},
-					"hash": {
-						"type": "string"
-					},
-					"spends": {
-						"items": {
-							"$ref": "#/components/schemas/LightSpend"
-						},
-						"type": "array"
-					},
-					"outputs": {
-						"items": {
-							"$ref": "#/components/schemas/LightOutput"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"index",
-					"hash",
-					"spends",
-					"outputs"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"LightBlock": {
-				"properties": {
-					"protoVersion": {
-						"type": "number",
-						"format": "double",
-						"description": "the version of this wire format, for storage"
-					},
-					"sequence": {
-						"type": "number",
-						"format": "double",
-						"description": "the height of this block"
-					},
-					"hash": {
-						"type": "string",
-						"description": "the ID (hash) of this block, same as explorer"
-					},
-					"previousBlockHash": {
-						"type": "string",
-						"description": "the ID (hash) of this block's predecessor"
-					},
-					"timestamp": {
-						"type": "number",
-						"format": "double",
-						"description": "Unix epoch time when the block was mined"
-					},
-					"transactions": {
-						"items": {
-							"$ref": "#/components/schemas/LightTransaction"
-						},
-						"type": "array",
-						"description": "zero or more compact transactions from this block"
-					},
-					"noteSize": {
-						"type": "number",
-						"format": "double",
-						"description": "the size of the notes tree after adding transactions from this block."
-					}
-				},
-				"required": [
-					"protoVersion",
-					"sequence",
-					"hash",
-					"previousBlockHash",
-					"timestamp",
-					"transactions",
-					"noteSize"
-				],
-				"type": "object",
-				"additionalProperties": false
 			}
 		},
 		"securitySchemes": {}
@@ -178,6 +71,7 @@
 						}
 					}
 				},
+				"description": "Retrieves the latest block on the remote node, the block hash and sequence number.",
 				"tags": [
 					"Block Controller"
 				],
@@ -190,7 +84,7 @@
 				"operationId": "BroadcastTransaction",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "if the transaction was accepted, the hash of the transaction",
 						"content": {
 							"application/json": {
 								"schema": {}
@@ -216,17 +110,20 @@
 						}
 					}
 				},
+				"description": "Broadcasts a transaction to the network. Input is a",
 				"tags": [
 					"Block Controller"
 				],
 				"security": [],
 				"parameters": [],
 				"requestBody": {
+					"description": "The hex encoded string `Transaction` to broadcast",
 					"required": true,
 					"content": {
 						"application/json": {
 							"schema": {
-								"type": "string"
+								"type": "string",
+								"description": "The hex encoded string `Transaction` to broadcast"
 							}
 						}
 					}
@@ -238,11 +135,11 @@
 				"operationId": "GetBlock",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "The hex encoded string representation of the block",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/LightBlock"
+									"type": "string"
 								}
 							}
 						}
@@ -284,12 +181,14 @@
 						}
 					}
 				},
+				"description": "Retrieves a block from the network. The block can be specified by its hash or sequence number.\nIf neither is provided, a 400 error is returned. If the block is not found, a 404 error is returned.",
 				"tags": [
 					"Block Controller"
 				],
 				"security": [],
 				"parameters": [
 					{
+						"description": "The hash of the block to retrieve",
 						"in": "query",
 						"name": "hash",
 						"required": false,
@@ -298,6 +197,7 @@
 						}
 					},
 					{
+						"description": "The sequence number of the block to retrieve",
 						"in": "query",
 						"name": "sequence",
 						"required": false,
@@ -314,24 +214,14 @@
 				"operationId": "GetBlockRange",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "An array of hex encoded string representations of the blocks",
 						"content": {
 							"application/json": {
 								"schema": {
-									"anyOf": [
-										{
-											"items": {
-												"$ref": "#/components/schemas/LightBlock"
-											},
-											"type": "array"
-										},
-										{
-											"items": {
-												"type": "string"
-											},
-											"type": "array"
-										}
-									]
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
 								}
 							}
 						}
@@ -373,12 +263,14 @@
 						}
 					}
 				},
+				"description": "Retrieves a range of blocks from the network. The range is specified by a start and end sequence number.\nIf either start or end is invalid, a 400 error is returned. If no blocks are found in the specified range, a 404 error is returned.",
 				"tags": [
 					"Block Controller"
 				],
 				"security": [],
 				"parameters": [
 					{
+						"description": "The sequence number of the first block in the range to retrieve",
 						"in": "query",
 						"name": "start",
 						"required": true,
@@ -388,21 +280,13 @@
 						}
 					},
 					{
+						"description": "The sequence number of the last block in the range to retrieve",
 						"in": "query",
 						"name": "end",
 						"required": true,
 						"schema": {
 							"format": "double",
 							"type": "number"
-						}
-					},
-					{
-						"in": "query",
-						"name": "binary",
-						"required": false,
-						"schema": {
-							"default": false,
-							"type": "boolean"
 						}
 					}
 				]
@@ -462,6 +346,7 @@
 						}
 					}
 				},
+				"description": "Retrieves the server information, including the version, vendor, network ID, node version, node status, block height, and block hash.",
 				"tags": [
 					"Block Controller"
 				],

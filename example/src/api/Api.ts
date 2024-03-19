@@ -15,55 +15,6 @@ export interface Error {
   stack?: string;
 }
 
-export interface LightSpend {
-  nf: string;
-}
-
-export interface LightOutput {
-  /** NoteEncrypted, serialized */
-  note: string;
-}
-
-export interface LightTransaction {
-  /**
-   * do we need this field?
-   * @format double
-   */
-  index: number;
-  hash: string;
-  spends: LightSpend[];
-  outputs: LightOutput[];
-}
-
-export interface LightBlock {
-  /**
-   * the version of this wire format, for storage
-   * @format double
-   */
-  protoVersion: number;
-  /**
-   * the height of this block
-   * @format double
-   */
-  sequence: number;
-  /** the ID (hash) of this block, same as explorer */
-  hash: string;
-  /** the ID (hash) of this block's predecessor */
-  previousBlockHash: string;
-  /**
-   * Unix epoch time when the block was mined
-   * @format double
-   */
-  timestamp: number;
-  /** zero or more compact transactions from this block */
-  transactions: LightTransaction[];
-  /**
-   * the size of the notes tree after adding transactions from this block.
-   * @format double
-   */
-  noteSize: number;
-}
-
 export type QueryParamsType = Record<string | number, any>;
 export type ResponseFormat = keyof Omit<Body, "body" | "bodyUsed">;
 
@@ -326,7 +277,7 @@ export class Api<
 > extends HttpClient<SecurityDataType> {
   latestBlock = {
     /**
-     * No description
+     * @description Retrieves the latest block on the remote node, the block hash and sequence number.
      *
      * @tags Block Controller
      * @name GetLatestBlock
@@ -349,7 +300,7 @@ export class Api<
   };
   transaction = {
     /**
-     * No description
+     * @description Broadcasts a transaction to the network. Input is a
      *
      * @tags Block Controller
      * @name BroadcastTransaction
@@ -372,7 +323,7 @@ export class Api<
   };
   block = {
     /**
-     * No description
+     * @description Retrieves a block from the network. The block can be specified by its hash or sequence number. If neither is provided, a 400 error is returned. If the block is not found, a 404 error is returned.
      *
      * @tags Block Controller
      * @name GetBlock
@@ -380,14 +331,18 @@ export class Api<
      */
     getBlock: (
       query?: {
+        /** The hash of the block to retrieve */
         hash?: string;
-        /** @format double */
+        /**
+         * The sequence number of the block to retrieve
+         * @format double
+         */
         sequence?: number;
       },
       params: RequestParams = {},
     ) =>
       this.request<
-        LightBlock,
+        string,
         {
           reason: string;
         }
@@ -401,7 +356,7 @@ export class Api<
   };
   blockRange = {
     /**
-     * No description
+     * @description Retrieves a range of blocks from the network. The range is specified by a start and end sequence number. If either start or end is invalid, a 400 error is returned. If no blocks are found in the specified range, a 404 error is returned.
      *
      * @tags Block Controller
      * @name GetBlockRange
@@ -409,17 +364,21 @@ export class Api<
      */
     getBlockRange: (
       query: {
-        /** @format double */
+        /**
+         * The sequence number of the first block in the range to retrieve
+         * @format double
+         */
         start: number;
-        /** @format double */
+        /**
+         * The sequence number of the last block in the range to retrieve
+         * @format double
+         */
         end: number;
-        /** @default false */
-        binary?: boolean;
       },
       params: RequestParams = {},
     ) =>
       this.request<
-        LightBlock[] | string[],
+        string[],
         {
           reason: string;
         }
@@ -433,7 +392,7 @@ export class Api<
   };
   serverInfo = {
     /**
-     * No description
+     * @description Retrieves the server information, including the version, vendor, network ID, node version, node status, block height, and block hash.
      *
      * @tags Block Controller
      * @name GetServerInfo
