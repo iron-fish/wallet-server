@@ -28,7 +28,7 @@ export class BlockController {
 
   @Post("transaction")
   @Response<Error>("400", "Error broadcasting transaction")
-  public async postTransaction(
+  public async broadcastTransaction(
     @Body() transaction: string,
     @Res() err: TsoaResponse<400, { reason: string }>,
   ) {
@@ -96,18 +96,19 @@ export class BlockController {
     @Res() err404: TsoaResponse<404, { reason: string }>,
     @Query() start: number,
     @Query() end: number,
-  ): Promise<LightBlock[]> {
+    @Query() binary: boolean = false,
+  ): Promise<LightBlock[] | string[]> {
     if (isNaN(start) || isNaN(end)) {
       err400(400, { reason: "Invalid start or end parameters" });
     }
 
     // Implement the logic to fetch the block range
     // Placeholder logic: Fetch blocks from cache or database
-    const blocks = [];
+    const blocks: LightBlock[] = [];
     for (let i = start; i <= end; i++) {
       const block = await lightBlockCache.getBlockBySequence(i);
       if (block) {
-        blocks.push(LightBlock.toJSON(block));
+        blocks.push(block);
       }
     }
 
@@ -116,7 +117,14 @@ export class BlockController {
       err404(404, { reason: "No blocks found in the specified range" });
     }
 
-    return blocks as LightBlock[];
+    if (binary) {
+      return blocks.map((block) => {
+        const binaryBlock = LightBlock.encode(block).finish();
+        return Buffer.from(binaryBlock).toString("hex");
+      });
+    }
+
+    return blocks.map((block) => LightBlock.toJSON(block)) as LightBlock[];
   }
 
   @Get("server-info")

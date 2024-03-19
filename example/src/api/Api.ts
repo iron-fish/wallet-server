@@ -9,16 +9,18 @@
  * ---------------------------------------------------------------
  */
 
+export interface Error {
+  name: string;
+  message: string;
+  stack?: string;
+}
+
 export interface LightSpend {
-  /** @format byte */
   nf: string;
 }
 
 export interface LightOutput {
-  /**
-   * NoteEncrypted, serialized
-   * @format byte
-   */
+  /** NoteEncrypted, serialized */
   note: string;
 }
 
@@ -28,7 +30,6 @@ export interface LightTransaction {
    * @format double
    */
   index: number;
-  /** @format byte */
   hash: string;
   spends: LightSpend[];
   outputs: LightOutput[];
@@ -45,15 +46,9 @@ export interface LightBlock {
    * @format double
    */
   sequence: number;
-  /**
-   * the ID (hash) of this block, same as explorer
-   * @format byte
-   */
+  /** the ID (hash) of this block, same as explorer */
   hash: string;
-  /**
-   * the ID (hash) of this block's predecessor
-   * @format byte
-   */
+  /** the ID (hash) of this block's predecessor */
   previousBlockHash: string;
   /**
    * Unix epoch time when the block was mined
@@ -357,16 +352,15 @@ export class Api<
      * No description
      *
      * @tags Block Controller
-     * @name PostTransaction
+     * @name BroadcastTransaction
      * @request POST:/transaction
      */
-    postTransaction: (data: string, params: RequestParams = {}) =>
+    broadcastTransaction: (data: string, params: RequestParams = {}) =>
       this.request<
+        any,
         {
-          hash: string;
-          accepted: boolean;
-        },
-        any
+          reason: string;
+        }
       >({
         path: `/transaction`,
         method: "POST",
@@ -392,7 +386,12 @@ export class Api<
       },
       params: RequestParams = {},
     ) =>
-      this.request<LightBlock, any>({
+      this.request<
+        LightBlock,
+        {
+          reason: string;
+        }
+      >({
         path: `/block`,
         method: "GET",
         query: query,
@@ -414,10 +413,17 @@ export class Api<
         start: number;
         /** @format double */
         end: number;
+        /** @default false */
+        binary?: boolean;
       },
       params: RequestParams = {},
     ) =>
-      this.request<LightBlock[], any>({
+      this.request<
+        LightBlock[] | string[],
+        {
+          reason: string;
+        }
+      >({
         path: `/block-range`,
         method: "GET",
         query: query,

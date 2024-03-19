@@ -187,7 +187,7 @@
 		},
 		"/transaction": {
 			"post": {
-				"operationId": "PostTransaction",
+				"operationId": "BroadcastTransaction",
 				"responses": {
 					"200": {
 						"description": "Ok",
@@ -318,10 +318,20 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/LightBlock"
-									},
-									"type": "array"
+									"anyOf": [
+										{
+											"items": {
+												"$ref": "#/components/schemas/LightBlock"
+											},
+											"type": "array"
+										},
+										{
+											"items": {
+												"type": "string"
+											},
+											"type": "array"
+										}
+									]
 								}
 							}
 						}
@@ -384,6 +394,15 @@
 						"schema": {
 							"format": "double",
 							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "binary",
+						"required": false,
+						"schema": {
+							"default": false,
+							"type": "boolean"
 						}
 					}
 				]

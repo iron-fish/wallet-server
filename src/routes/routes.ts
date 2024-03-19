@@ -7,7 +7,7 @@ import {
   ExpressTemplateService,
 } from "@tsoa/runtime";
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-import { BlockController } from "./../contollers/block";
+import { BlockController } from "./../controllers/block";
 import type {
   Request as ExRequest,
   Response as ExResponse,
@@ -137,10 +137,10 @@ export function RegisterRoutes(app: Router) {
     "/transaction",
     ...fetchMiddlewares<RequestHandler>(BlockController),
     ...fetchMiddlewares<RequestHandler>(
-      BlockController.prototype.postTransaction,
+      BlockController.prototype.broadcastTransaction,
     ),
 
-    function BlockController_postTransaction(
+    function BlockController_broadcastTransaction(
       request: ExRequest,
       response: ExResponse,
       next: any,
@@ -174,7 +174,7 @@ export function RegisterRoutes(app: Router) {
         const controller = new BlockController();
 
         templateService.apiHandler({
-          methodName: "postTransaction",
+          methodName: "broadcastTransaction",
           controller,
           response,
           next,
@@ -276,6 +276,12 @@ export function RegisterRoutes(app: Router) {
           dataType: "double",
         },
         end: { in: "query", name: "end", required: true, dataType: "double" },
+        binary: {
+          default: false,
+          in: "query",
+          name: "binary",
+          dataType: "boolean",
+        },
       };
 
       // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa

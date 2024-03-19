@@ -165,6 +165,6 @@ export class Client {
   }
 
   public async sendTransaction(transaction: Buffer) {
-    return api.transaction.postTransaction(transaction.toString("hex"));
+    return api.transaction.broadcastTransaction(transaction.toString("hex"));
   }
 }
