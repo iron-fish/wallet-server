@@ -183,7 +183,7 @@ export class AccountsManager {
         currentNotePosition++;
 
         this._processNote(
-          new NoteEncrypted(output.note),
+          new NoteEncrypted(Buffer.from(output.note, "hex")),
           parsedBlock,
           tx,
           index,
@@ -247,11 +247,11 @@ export class AccountsManager {
         accountId: publicKey,
         note: deserializedNote,
         spent: false,
-        transactionHash: tx.hash,
+        transactionHash: Buffer.from(tx.hash, "hex"),
         index,
         nullifier,
         merkleIndex: position,
-        blockHash: block.hash,
+        blockHash: Buffer.from(block.hash, "hex"),
         sequence: block.sequence,
       });
 
@@ -283,7 +283,9 @@ export class AccountsManager {
 
   private _processSpend(spend: LightSpend) {
     for (const account of this.accounts.values()) {
-      const noteHash = account.noteHashByNullifier.get(spend.nf);
+      const noteHash = account.noteHashByNullifier.get(
+        Buffer.from(spend.nf, "hex"),
+      );
 
       if (!noteHash) return;
 
@@ -311,7 +313,9 @@ export class AccountsManager {
         // First we'll process spends
         tx.spends.forEach((spend) => {
           // If we have a note hash for the nullifier, it means we have a note for this account.
-          const noteHash = account.noteHashByNullifier.get(spend.nf);
+          const noteHash = account.noteHashByNullifier.get(
+            Buffer.from(spend.nf, "hex"),
+          );
 
           if (!noteHash) return;
 
@@ -328,7 +332,7 @@ export class AccountsManager {
 
         // Next we'll process outputs
         tx.outputs.forEach((output) => {
-          const note = new NoteEncrypted(output.note);
+          const note = new NoteEncrypted(Buffer.from(output.note, "hex"));
 
           // Decrypt note using view key
           const decryptedNoteBuffer = note.decryptNoteForOwner(

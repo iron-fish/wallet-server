@@ -5,17 +5,19 @@
   "main": "index.js",
   "scripts": {
     "dev": "ts-node src/index.ts",
+    "gen-api": "yarn swagger-typescript-api -p ../src/swagger/swagger.json -o src/api",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Demo",
   "license": "ISC",
   "devDependencies": {
     "@ironfish/rust-nodejs": "^1.8.0",
+    "buffer-map": "^0.0.7",
     "dotenv": "^16.3.1",
     "leveldown": "^6.1.1",
     "levelup": "^5.1.1",
+    "swagger-typescript-api": "^13.0.3",
     "ts-node": "^10.9.1",
-    "typescript": "^5.1.6",
-    "buffer-map": "^0.0.7"
+    "typescript": "^5.1.6"
   }
 }

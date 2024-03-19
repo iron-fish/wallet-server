@@ -1,25 +1,19 @@
 import { EventEmitter } from "events";
 
-import { ServiceError } from "@grpc/grpc-js";
 import { BlockCache } from "./BlockCache";
-import {
-  BlockID,
-  Empty,
-  LightBlock,
-  LightStreamerClient,
-} from "../../../../src/models/lightstreamer";
+import { LightBlock } from "../../../../src/models/lightstreamer";
 import {
   addNotesToMerkleTree,
   getNotesTreeSize,
   revertToNoteSize,
 } from "./MerkleTree";
-import { logThrottled } from "./logThrottled";
 import { AccountsManager } from "./AccountsManager";
+import { Api } from "example/src/api/Api";
 
 const POLL_INTERVAL = 30 * 1000;
 
 export class BlockProcessor {
-  private client: LightStreamerClient;
+  private api: Api<unknown>;
   private pollInterval?: NodeJS.Timer;
   private isProcessingBlocks: boolean = false;
   private blockCache: BlockCache;
@@ -27,11 +21,11 @@ export class BlockProcessor {
   private events: EventEmitter = new EventEmitter(); // Event emitter for block events
 
   constructor(
-    client: LightStreamerClient,
+    api: Api<unknown>,
     blockCache: BlockCache,
     accountsManager: AccountsManager,
   ) {
-    this.client = client;
+    this.api = api;
     this.blockCache = blockCache;
     this.accountsManager = accountsManager;
   }
@@ -67,11 +61,7 @@ export class BlockProcessor {
     if (this.isProcessingBlocks) {
       return;
     }
-    const [latestBlockError, latestBlock] = await this._getLatestBlock();
-
-    if (latestBlockError) {
-      throw latestBlockError;
-    }
+    const latestBlock = await this._getLatestBlock();
 
     const headSequence = latestBlock.sequence;
 
@@ -96,75 +86,43 @@ export class BlockProcessor {
     return;
   }
 
-  private _getLatestBlock() {
-    return new Promise<[ServiceError | null, BlockID]>((res) => {
-      this.client.getLatestBlock(Empty, (error, result) => {
-        res([error, result]);
-      });
-    });
+  private async _getLatestBlock(): Promise<{
+    hash: string;
+    sequence: number;
+  }> {
+    const response = await this.api.latestBlock.getLatestBlock();
+    return response.data;
   }
 
-  private _getBlockBySequence(sequence: number) {
-    return new Promise<[ServiceError | null, BlockID]>((res) => {
-      this.client.getBlock({ sequence }, (error, result) => {
-        res([error, result]);
-      });
-    });
+  private async _getBlockBySequence(sequence: number): Promise<LightBlock> {
+    const response = await this.api.block.getBlock({ sequence });
+    return LightBlock.decode(Buffer.from(response.data, "hex"));
   }
   private async _processBlockRange(startSequence: number, endSequence: number) {
     console.log(`Processing blocks from ${startSequence} to ${endSequence}`);
-
-    let blocksProcessed = startSequence;
-    let processingChain = Promise.resolve(); // Initialize a Promise chain
-
-    const stream = this.client.getBlockRange({
-      start: {
-        sequence: startSequence,
-      },
-      end: {
-        sequence: endSequence,
-      },
+    const response = await this.api.blockRange.getBlockRange({
+      start: startSequence,
+      end: endSequence,
     });
 
-    const resolveWhenDone = (resolve: (value: unknown) => void) => {
-      if (blocksProcessed === endSequence + 1) {
-        resolve(true);
-        console.log("Finished processing blocks");
-      }
-    };
-
     try {
-      await new Promise((res, rej) => {
-        stream.on("data", (block: LightBlock) => {
-          // Append the next block's processing to the promise chain
-          processingChain = processingChain
-            .then(() => this._processBlock(block))
-            .then(() => {
-              blocksProcessed++;
-              logThrottled(
-                `Processed ${blocksProcessed}/${endSequence} blocks`,
-                100,
-                blocksProcessed,
-              );
-              resolveWhenDone(res); // Check if all blocks have been processed
-            })
-            .catch((err) => {
-              console.error("Error processing block:", err);
-              rej(err);
-            });
-        });
-
-        stream.on("end", () => {
-          resolveWhenDone(res); // Check if all blocks have been processed
-        });
-
-        stream.on("error", (err) => {
-          rej(err);
-        });
-      });
+      const blocks = response.data;
+      for (const block of blocks) {
+        try {
+          await this._processBlock(
+            LightBlock.decode(Buffer.from(block, "hex")),
+          );
+        } catch (err) {
+          console.error("Error processing block:", err);
+          throw err;
+        }
+      }
     } catch (err) {
       console.error(err);
     }
+    console.log(
+      `Finished processing blocks from ${startSequence} to ${endSequence}`,
+    );
   }
 
   private async _processBlock(block: LightBlock) {
@@ -178,7 +136,7 @@ export class BlockProcessor {
 
     for (const transaction of block.transactions) {
       for (const output of transaction.outputs) {
-        notes.push(output.note);
+        notes.push(Buffer.from(output.note, "hex"));
       }
     }
 
@@ -206,7 +164,7 @@ export class BlockProcessor {
 
     // If the incoming block's previous block hash matches the previous block's hash,
     // there is no reorg. Note that Buffer.compare returns 0 if the two buffers are equal.
-    if (block.previousBlockHash.compare(prevCachedBlock.hash) === 0) {
+    if (block.previousBlockHash == prevCachedBlock.hash) {
       return false;
     }
 
@@ -216,11 +174,7 @@ export class BlockProcessor {
 
     while (!lastMainChainBlock) {
       // Get block from server
-      const [err, block] = await this._getBlockBySequence(currentSequence);
-
-      if (err) {
-        throw err;
-      }
+      const block = await this._getBlockBySequence(currentSequence);
 
       // Get block from cache
       const cachedBlock = await this.blockCache.getBlockBySequence(

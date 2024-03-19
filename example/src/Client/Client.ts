@@ -1,9 +1,3 @@
-import { ServiceError, credentials } from "@grpc/grpc-js";
-import {
-  LightStreamerClient,
-  SendResponse,
-  Transaction,
-} from "../../../src/models/lightstreamer";
 import { BlockProcessor } from "./utils/BlockProcessor";
 import { AccountData, AccountsManager } from "./utils/AccountsManager";
 import { BlockCache } from "./utils/BlockCache";
@@ -15,11 +9,9 @@ import {
 } from "@ironfish/rust-nodejs";
 import { MerkleWitness, notesTree } from "./utils/MerkleTree";
 import { BufferMap } from "buffer-map";
+import { Api } from "../api/Api";
 
-const client = new LightStreamerClient(
-  process.env["WALLET_SERVER_HOST"] ?? "localhost:50051",
-  credentials.createInsecure(),
-);
+const api = new Api({ baseUrl: process.env["WALLET_SERVER_HOST"] });
 
 export class Client {
   private blockCache: BlockCache;
@@ -31,7 +23,7 @@ export class Client {
     this.blockCache = new BlockCache();
     this.accountsManager = new AccountsManager(this.blockCache);
     this.blockProcessor = new BlockProcessor(
-      client,
+      api,
       this.blockCache,
       this.accountsManager,
     );
@@ -173,13 +165,6 @@ export class Client {
   }
 
   public async sendTransaction(transaction: Buffer) {
-    return new Promise<[ServiceError | null, SendResponse]>((res) => {
-      client.sendTransaction(
-        Transaction.create({ data: transaction }),
-        (error, result) => {
-          res([error, result]);
-        },
-      );
-    });
+    return api.transaction.broadcastTransaction(transaction.toString("hex"));
   }
 }

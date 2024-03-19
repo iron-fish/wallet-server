@@ -34,14 +34,14 @@ export function lightBlock(
     serialized = rpcTransaction.serialized;
     const transaction = new Transaction(Buffer.from(serialized, "hex"));
     for (const spend of transaction.spends) {
-      lightSpends.push({ nf: spend.nullifier });
+      lightSpends.push({ nf: spend.nullifier.toString("hex") });
     }
     for (const note of transaction.notes) {
-      lightOutputs.push({ note: note.serialize() });
+      lightOutputs.push({ note: note.serialize().toString("hex") });
     }
     lightTransactions.push({
       index,
-      hash: Buffer.from(rpcTransaction.hash, "hex"),
+      hash: rpcTransaction.hash,
       spends: lightSpends,
       outputs: lightOutputs,
     });
@@ -49,8 +49,8 @@ export function lightBlock(
   return {
     protoVersion: 1,
     sequence: response.block.sequence,
-    hash: Buffer.from(response.block.hash, "hex"),
-    previousBlockHash: Buffer.from(previousBlockHash, "hex"),
+    hash: response.block.hash,
+    previousBlockHash: previousBlockHash,
     timestamp: response.block.timestamp,
     transactions: lightTransactions,
     noteSize: response.block.noteSize,
