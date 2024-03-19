@@ -66,6 +66,17 @@ describe("GET /block-range", () => {
     );
   });
 
+  it("should return binary hex if prompted", async () => {
+    // Setup mock to return a range of blocks
+
+    const response = await request(app).get(
+      "/block-range?start=1&end=10&binary=true",
+    );
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toHaveLength(10);
+    expect(() => Buffer.from(response.body[0], "hex")).not.toThrow();
+  });
+
   it("should handle invalid range parameters", async () => {
     const response = await request(app).get("/block-range?starttypo=1&end=10");
     expect(response.statusCode).toBe(400);
