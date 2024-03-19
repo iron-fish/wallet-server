@@ -23,7 +23,7 @@ function getCachePath(): string {
   return path.join(".", folderName);
 }
 
-class LightBlockCache {
+export class LightBlockCache {
   private db: LevelUp;
   private cacheDir: string;
 
@@ -85,6 +85,26 @@ class LightBlockCache {
     const block = await this.get(hash);
     if (!block) return null;
     return LightBlock.decode(block);
+  }
+
+  async getHeadSequence(): Promise<number> {
+    const head = await this.get("head");
+    if (!head) return 0;
+    const block = await this.getBlockByHash(head.toString());
+    if (!block) return 0;
+    return block.sequence;
+  }
+
+  async getUploadHead(): Promise<number> {
+    const head = await this.get("uploadHead");
+    if (!head) return 0;
+    const block = await this.getBlockByHash(head.toString());
+    if (!block) return 0;
+    return block.sequence;
+  }
+
+  async putUploadHead(hash: string): Promise<void> {
+    await this.put("uploadHead", hash);
   }
 
   async get(key: string): Promise<Uint8Array | null> {
