@@ -30,7 +30,7 @@ export class BlockController {
   }
 
   /**
-   * Broadcasts a transaction to the network. Input is a
+   * Broadcasts a transaction to the network. Input is a hex encoded string of the `Transaction` to broadcast.
    * @param transaction The hex encoded string `Transaction` to broadcast
    * @returns if the transaction was accepted, the hash of the transaction
    */

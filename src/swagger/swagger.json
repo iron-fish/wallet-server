@@ -110,7 +110,7 @@
 						}
 					}
 				},
-				"description": "Broadcasts a transaction to the network. Input is a",
+				"description": "Broadcasts a transaction to the network. Input is a hex encoded string of the `Transaction` to broadcast.",
 				"tags": [
 					"Block Controller"
 				],
