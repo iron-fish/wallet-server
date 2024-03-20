@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "nodemon --config ./nodemon.json --exec 'yarn build && yarn start'",
     "lint": "eslint --ext .ts .",
-    "test": "yarn build && CACHE_PATH='test/cache' BUILD_CACHE=false jest src/* --forceExit --runInBand",
+    "test": "yarn build && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" CACHE_PATH='test/cache' BUILD_CACHE=false jest src/* --forceExit --runInBand",
     "format": "prettier . --write",
     "prebuild": "node bin/proto && rimraf dist",
     "tsoa-gen": "tsoa spec-and-routes",
@@ -25,7 +25,7 @@
     "url": "https://github.com/iron-fish/ironfish/issues"
   },
   "devDependencies": {
-    "@ironfish/sdk": "^1.8.0",
+    "@ironfish/sdk": "^2.1.0",
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.12",
     "@types/leveldown": "^4.0.3",

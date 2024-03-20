@@ -17,10 +17,7 @@ export function lightBlock(
     throw new Error("Block is missing noteSize");
   }
   const lightTransactions: LightTransaction[] = [];
-  const previousBlockHash =
-    "previous" in response.block
-      ? response.block.previous
-      : response.block.previousBlockHash;
+  const previousBlockHash = response.block.previousBlockHash;
   for (let index = 0; index < response.block.transactions.length; index++) {
     const rpcTransaction = response.block.transactions[index];
     const lightSpends: LightSpend[] = [];
