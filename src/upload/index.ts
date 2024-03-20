@@ -1,7 +1,6 @@
 import { gzipSync } from "zlib";
 import {
-  HeadObjectCommand,
-  NotFound,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -11,7 +10,7 @@ import { logger } from "@/utils/logger";
 
 class UploaderError extends Error {}
 
-class LightBlockUpload {
+export class LightBlockUpload {
   private cache: LightBlockCache;
   private s3Client: S3Client;
   private bucket: string;
@@ -57,15 +56,18 @@ class LightBlockUpload {
     }
   }
 
+  // returns hash of last block uploaded
   private async uploadBlocks(start: number, end: number): Promise<void> {
     logger.info(`Uploading blocks ${start} to ${end}`);
 
     let data = "";
+    let blockHash = null;
     for (let i = start; i <= end; i++) {
       const block = await this.cache.getBlockBySequence(i);
       if (block) {
         data +=
           Buffer.from(LightBlock.encode(block).finish()).toString("hex") + "\n";
+        blockHash = block?.hash;
       }
     }
 
@@ -80,6 +82,7 @@ class LightBlockUpload {
     });
 
     await this.s3Client.send(command);
+    if (blockHash) await this.cache.putUploadHead(blockHash);
   }
 
   private uploadName(start: number, end: number): string {
@@ -93,23 +96,21 @@ class LightBlockUpload {
     if (!head) return;
 
     const headBlockSequence = parseInt(head.toString());
+
+    const { Contents } = await this.s3Client.send(
+      new ListObjectsV2Command({ Bucket: this.bucket }),
+    );
+
+    if (!Contents) return;
+    const keys = Contents.map((item) => item.Key).filter(Boolean) as string[];
     for (let i = 0; i <= headBlockSequence; i += 1000) {
       if (headBlockSequence - i < 1000) {
         continue;
       }
       const end = Math.min(i + 999, headBlockSequence);
       const key = this.uploadName(i, end);
-
-      try {
-        await this.s3Client.send(
-          new HeadObjectCommand({ Bucket: this.bucket, Key: key }),
-        );
-      } catch (error) {
-        if (error instanceof NotFound) {
-          await this.uploadBlocks(i, end);
-        } else {
-          throw error;
-        }
+      if (!keys.includes(key)) {
+        await this.uploadBlocks(i, end);
       }
     }
   }
