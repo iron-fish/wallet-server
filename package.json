@@ -25,7 +25,7 @@
     "url": "https://github.com/iron-fish/ironfish/issues"
   },
   "devDependencies": {
-    "@ironfish/sdk": "^1.8.0",
+    "@ironfish/sdk": "^2.1.0",
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.12",
     "@types/leveldown": "^4.0.3",

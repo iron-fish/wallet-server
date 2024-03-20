@@ -9,9 +9,6 @@ COPY package*.json ./
 COPY yarn.lock ./
 
 # Install any needed packages specified in package.json
-RUN npm install -g yarn
-
-# Install any needed packages specified in package.json
 RUN yarn
 
 # Copy the rest of your app's source code to /app
