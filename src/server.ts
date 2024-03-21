@@ -17,7 +17,7 @@ if (process.env["BUILD_CACHE"] === "true") {
 
 if (process.env["UPLOAD_BLOCKS"] === "true") {
   logger.info("Starting uploader...");
-  void lightBlockUpload.watchAndUpload();
+  void lightBlockUpload.upload();
 }
 
 export const app = express();

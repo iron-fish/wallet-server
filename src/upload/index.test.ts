@@ -1,70 +1,50 @@
-import { LightBlockUpload } from "./index";
+import { lightBlockCache } from "../cache";
+import { lightBlockUpload } from "./index";
 import {
-  S3Client,
   PutObjectCommand,
   ListObjectsV2Command,
+  S3Client,
 } from "@aws-sdk/client-s3";
-import { LightBlockCache } from "../cache";
-import { LightBlock } from "../models/lightstreamer";
-
-jest.mock("@aws-sdk/client-s3", () => {
-  return {
-    S3Client: jest.fn().mockImplementation(() => {
-      return {
-        send: jest.fn().mockImplementation(() => {
-          return { Contents: [] };
-        }),
-      };
-    }),
-    ListObjectsV2Command: jest.fn().mockImplementation(() => {
-      return {};
-    }),
-    PutObjectCommand: jest.fn().mockImplementation(() => {
-      return {};
-    }),
-  };
-});
 
 describe("LightBlockUpload", () => {
-  let lightBlockUpload: LightBlockUpload;
-  let mockCache: jest.Mocked<LightBlockCache>;
-  let mockS3Client: jest.Mocked<S3Client>;
-
   beforeAll(() => {
-    mockCache = new LightBlockCache() as jest.Mocked<LightBlockCache>;
-    mockS3Client = new S3Client({}) as jest.Mocked<S3Client>;
-    lightBlockUpload = new LightBlockUpload(mockCache);
-  });
-
-  afterAll(() => {
-    jest.resetAllMocks();
-  });
-
-  it("should throw an error if environment variables are not set", () => {
-    delete process.env["BUCKET_ENDPOINT"];
-    expect(() => new LightBlockUpload(mockCache)).toThrow();
-  });
-
-  it("should upload blocks", async () => {
-    const mockBlock = LightBlock.fromJSON({
-      sequence: 1000,
-      hash: "test-hash",
-      previousBlockHash: "test-previous-hash",
-      timestamp: 123456789,
-      transactions: [],
-      noteSize: 0,
+    jest.spyOn(S3Client.prototype, "send").mockImplementation((command) => {
+      if (command instanceof ListObjectsV2Command) {
+        return Promise.resolve({
+          Contents: [
+            { Key: lightBlockUpload.uploadName({ start: 1, end: 1000 }) },
+            { Key: lightBlockUpload.uploadName({ start: 1001, end: 2000 }) },
+          ],
+        });
+      } else if (command instanceof PutObjectCommand) {
+        return Promise.resolve({
+          /* your mock PutObjectCommand response */
+        });
+      } else {
+        throw new Error(
+          `Command mock not implemented: ${command.constructor.name}`,
+        );
+      }
     });
-    mockCache.getBlockBySequence.mockResolvedValue(mockBlock);
-    mockCache.getHeadSequence.mockResolvedValue(1001);
-    mockCache.getUploadHead.mockResolvedValue(0);
+  });
 
-    const mockSend = jest.fn();
-    mockS3Client.send = mockSend;
+  afterAll(async () => {
+    jest.resetAllMocks();
+    await lightBlockCache.close();
+  });
 
-    await lightBlockUpload.watchAndUpload();
+  it("upload name creation should be reversible", () => {
+    const blockRange = { start: 1, end: 1000 };
+    const key = lightBlockUpload.uploadName(blockRange);
+    const newBlockRange = lightBlockUpload.parseUploadName(key);
+    expect(blockRange).toEqual(newBlockRange);
+  });
 
-    expect(mockSend).toHaveBeenCalledWith(expect.any(ListObjectsV2Command));
-    expect(mockSend).toHaveBeenCalledWith(expect.any(PutObjectCommand));
-    expect(mockCache.putUploadHead).toHaveBeenCalledWith("test-hash");
+  it("existing uploads should return block ranges", async () => {
+    const ranges = await lightBlockUpload.existingUploads();
+    expect(ranges).toEqual([
+      { start: 1, end: 1000 },
+      { start: 1001, end: 2000 },
+    ]);
   });
 });
