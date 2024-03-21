@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "nodemon --config ./nodemon.json --exec 'yarn build && yarn start'",
     "lint": "eslint --ext .ts .",
-    "test": "yarn build && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" CACHE_PATH='test/cache' BUILD_CACHE=false jest src/* --forceExit --runInBand",
+    "test": "yarn build && CACHE_PATH='test/cache' UPLOAD_BLOCKS=false BUILD_CACHE=false jest src/* --forceExit --runInBand",
     "format": "prettier . --write",
     "prebuild": "node bin/proto && rimraf dist",
     "tsoa-gen": "tsoa spec-and-routes",

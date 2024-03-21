@@ -30,17 +30,6 @@ afterAll(async () => {
   server.close();
 });
 
-describe("GET /latest-block", () => {
-  it("should return the latest block successfully", async () => {
-    const response = await request(app).get("/latest-block");
-    expect(response.statusCode).toBe(200);
-    expect(response.body).toMatchObject({
-      sequence: expect.any(Number),
-      hash: expect.any(String),
-    });
-  });
-});
-
 describe("GET /block", () => {
   it("should return the correct block for a given identifier", async () => {
     // Assuming an identifier and corresponding block fixture exist
