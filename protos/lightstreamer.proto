@@ -5,7 +5,7 @@ message Empty {}
 
 message BlockID {
   optional uint64 sequence = 1;
-  optional string hash = 2;
+  optional bytes hash = 2;
 }
 
 // BlockRange specifies a series of blocks from start to end inclusive.
@@ -18,8 +18,8 @@ message BlockRange {
 message LightBlock {
 	uint32 protoVersion = 1;    // the version of this wire format, for storage
   uint64 sequence = 2;          // the height of this block
-  string hash = 3;             // the ID (hash) of this block, same as explorer
-  string previousBlockHash = 4;         // the ID (hash) of this block's predecessor
+  bytes hash = 3;             // the ID (hash) of this block, same as explorer
+  bytes previousBlockHash = 4;         // the ID (hash) of this block's predecessor
   uint32 timestamp = 5;            // Unix epoch time when the block was mined
   repeated LightTransaction transactions = 6; // zero or more compact transactions from this block
   uint64 noteSize = 7; // the size of the notes tree after adding transactions from this block.
@@ -28,7 +28,7 @@ message LightBlock {
 
 message LightTransaction {
   uint64 index = 1; // do we need this field?
-  string hash = 2;
+  bytes hash = 2;
 
   repeated LightSpend spends = 4;
   repeated LightOutput outputs = 5;
@@ -36,20 +36,20 @@ message LightTransaction {
 
 
 message LightSpend {
-  string nf = 2;
+  bytes nf = 2;
 }
 
 message LightOutput {
-  string note = 1; // NoteEncrypted, serialized
+  bytes note = 1; // NoteEncrypted, serialized
 }
 
 message Transaction {
   // built, encrypted transaction
-  string data = 1;
+  bytes data = 1;
 }
 
 message SendResponse {
-  string hash = 1;
+  bytes hash = 1;
   bool accepted = 2;
 }
 

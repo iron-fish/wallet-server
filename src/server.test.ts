@@ -9,15 +9,15 @@ import { LightBlock } from "./models/lightstreamer";
 const expectedBlockObject = {
   protoVersion: expect.any(Number),
   sequence: 1,
-  hash: expect.any(String),
-  previousBlockHash: expect.any(String),
+  hash: expect.any(Buffer),
+  previousBlockHash: expect.any(Buffer),
   timestamp: expect.any(Number),
   transactions: expect.arrayContaining([
     expect.objectContaining({
-      hash: expect.any(String),
+      hash: expect.any(Buffer),
       outputs: expect.arrayContaining([
         expect.objectContaining({
-          note: expect.any(String),
+          note: expect.any(Buffer),
         }),
       ]),
     }),

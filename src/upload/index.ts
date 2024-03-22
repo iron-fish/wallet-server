@@ -1,10 +1,12 @@
-import fs from "fs";
-import { createGzip } from "zlib";
 import {
-  ListObjectsV2Command,
+  HeadObjectCommand,
+  NotFound,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import * as zlib from "zlib";
+import fs from "fs";
+
 import { LightBlockCache, lightBlockCache } from "@/cache";
 import { LightBlock } from "@/models/lightstreamer";
 import { logger } from "@/utils/logger";
@@ -14,6 +16,11 @@ class UploadError extends Error {}
 export type BlockRange = {
   start: number;
   end: number;
+};
+
+export type BlockFile = {
+  file: string;
+  manifest: string;
 };
 
 export class LightBlockUpload {
@@ -55,113 +62,135 @@ export class LightBlockUpload {
   }
 
   async upload(): Promise<void> {
-    const existingUploads = await this.existingUploads();
-    let maxUploaded = existingUploads.reduce((max, range) => {
-      return range.end > max ? range.end : max;
-    }, 0);
-    let head = await this.cache.getHeadSequence();
-    if (!head) head = 0;
-
     // eslint-disable-next-line no-constant-condition
-    while (true) {
-      logger.info(
-        `Gzipping blocks for ${maxUploaded + 1} for ${
-          this.chunkSizeMb
-        } MB upload`,
-      );
-      const fileName = "blocks.gz";
-      const range = await this.gzipBlocks(
-        maxUploaded + 1,
-        this.chunkSizeMb * 1024 * 1024,
-        fileName,
-      );
+    const fileName = "blocks";
+    const currentUploadSize = (await this.getFileSize(fileName)) || 0;
+    logger.info(
+      `Current file uploaded size: ${currentUploadSize}, creating new upload...`,
+    );
+    const files = await this.createBlockFiles(fileName, currentUploadSize);
 
-      logger.info(`Uploading blocks ${range.start} to ${range.end}`);
-      const key = this.uploadName(range);
-      await this.uploadBlocks(fileName, key);
-      maxUploaded = range.end;
-    }
+    logger.info(`Upload: begin...`);
+    const gzip = await this.gzipFile(files.file, `${files.file}.gz`);
+    await this.uploadFile(gzip, "application/gzip");
+    logger.info(`Upload: gzip file complete`);
+
+    await this.uploadFile(files.file, "application/octet-stream");
+    logger.info(`Upload: binary file complete`);
+
+    const gzipManifest = await this.gzipFile(
+      files.manifest,
+      `${files.manifest}.gz`,
+    );
+    await this.uploadFile(gzipManifest, "application/gzip");
+    logger.info(`Upload: manifest file complete`);
+
+    await this.upload();
   }
 
-  async gzipBlocks(
-    start: number,
-    chunkSizeBytes: number,
+  async createBlockFiles(
     outputFileName: string,
-  ): Promise<BlockRange> {
-    const gzip = createGzip();
+    previousSize: number,
+  ): Promise<BlockFile> {
+    this.deleteFileIfExists(outputFileName);
+    const manifestFileName = `${outputFileName}.manifest`;
+    this.deleteFileIfExists(manifestFileName);
+
+    let i = 1;
+    let currentByte = 0;
     const outputFile = fs.createWriteStream(outputFileName);
-    gzip.pipe(outputFile);
-    let i = start;
-    let block;
-    let warned = false;
+    const manifestFile = fs.createWriteStream(manifestFileName);
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      block = await this.cache.getBlockBySequence(i);
+      const block = await this.cache.getBlockBySequence(i);
+      if (block == null && previousSize === 0) break;
       if (block == null) {
-        if (!warned) {
-          logger.warn(
-            `At end of chain at block ${i}, filling gzip for upload as blocks are added.`,
-          );
-          warned = true;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 60000)); // Wait for 1 minute
+        await this.waitForNextBlock();
         continue;
       }
+
       const blockBuffer = LightBlock.encode(block).finish();
-      const lengthBuffer = Buffer.alloc(4);
-      lengthBuffer.writeUInt32BE(blockBuffer.byteLength, 0);
-      gzip.write(lengthBuffer);
-      gzip.write(blockBuffer);
-      if (outputFile.bytesWritten >= chunkSizeBytes) {
+      outputFile.write(blockBuffer);
+      manifestFile.write(
+        `${i},${currentByte},${currentByte + blockBuffer.byteLength - 1}\n`,
+      );
+      currentByte += blockBuffer.byteLength;
+
+      if (
+        !!previousSize &&
+        outputFile.bytesWritten >=
+          Math.max(this.chunkSizeMb * 1024 * 1024 + previousSize)
+      ) {
         break;
       }
       i++;
     }
-    gzip.end();
-    await new Promise((resolve) => outputFile.on("finish", resolve));
-    return { start, end: i };
+
+    outputFile.end();
+    manifestFile.end();
+
+    logger.info(
+      `New file upload created, size ${
+        outputFile.bytesWritten / 1024 / 1024
+      } MB, blocks: ${i - 1}`,
+    );
+    return { file: outputFileName, manifest: manifestFileName };
   }
 
-  async uploadBlocks(fileName: string, key: string): Promise<void> {
+  private deleteFileIfExists(fileName: string): void {
+    if (fs.existsSync(fileName)) {
+      fs.unlinkSync(fileName);
+    }
+  }
+
+  private async waitForNextBlock(): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 60000)); // Wait for 1 minute
+  }
+
+  async gzipFile(inputFile: string, outputFile: string): Promise<string> {
+    const writeStream = fs.createWriteStream(outputFile);
+    const readStream = fs.createReadStream(inputFile);
+    const gzip = zlib.createGzip();
+    readStream.pipe(gzip).pipe(writeStream);
+
+    await new Promise((resolve, reject) => {
+      writeStream.on("finish", resolve);
+      writeStream.on("error", reject);
+    });
+    logger.info(`Gzipping file complete: ${outputFile}`);
+    return outputFile;
+  }
+
+  async uploadFile(fileName: string, contentType: string): Promise<void> {
+    // due to consistentcy model of S3, should be safe to overwrite upload
     const fileStream = fs.createReadStream(fileName);
     const fileSize = fs.statSync(fileName).size;
-
     const command = new PutObjectCommand({
       Bucket: this.bucket,
-      ContentType: "application/gzip",
+      ContentType: contentType,
       ContentLength: fileSize,
-      Key: key,
+      Key: fileName,
       Body: fileStream,
     });
-
     await this.s3Client.send(command);
   }
 
-  async existingUploads(): Promise<BlockRange[]> {
-    const { Contents } = await this.s3Client.send(
-      new ListObjectsV2Command({ Bucket: this.bucket }),
-    );
-
-    if (!Contents) return [];
-    const keys = Contents.map((item) => item.Key).filter(Boolean) as string[];
-    return keys.map((key) => {
-      return this.parseUploadName(key);
+  async getFileSize(key: string): Promise<number | null> {
+    const command = new HeadObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
     });
-  }
 
-  uploadName(range: BlockRange): string {
-    return `blocks_${range.start.toString().padStart(10, "0")}_${range.end
-      .toString()
-      .padStart(10, "0")}.gz`;
-  }
-
-  parseUploadName(uploadName: string): BlockRange {
-    const match = uploadName.match(/blocks_(\d+)_(\d+)\.gz/);
-    if (match) {
-      return { start: parseInt(match[1], 10), end: parseInt(match[2], 10) };
+    try {
+      const { ContentLength } = await this.s3Client.send(command);
+      return ContentLength || null;
+    } catch (error) {
+      if (error instanceof NotFound) {
+        return null;
+      }
+      throw error;
     }
-    throw new UploadError("Invalid upload name: " + uploadName);
   }
 }
 
