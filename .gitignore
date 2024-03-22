@@ -9,6 +9,4 @@ node_modules/
 *testdb*
 *yarn-error.log
 test/*
-blocks
-blocks.gz
-blocks.manifest
+blocks*

@@ -2,6 +2,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { open } from "fs/promises";
+import { Reader } from "protobufjs/minimal";
 
 import { createGunzip } from "zlib";
 import { lightBlockCache } from "../cache";
@@ -26,38 +27,31 @@ describe("LightBlockUpload", () => {
 
     const gunzip = createGunzip();
     const inputFile = fs.createReadStream(tempGz);
-    inputFile.pipe(gunzip);
+    let data = Buffer.alloc(0);
 
-    let lastBlock: LightBlock | undefined;
+    inputFile
+      .pipe(gunzip)
+      .on("data", (chunk: Buffer) => {
+        data = Buffer.concat([data, chunk]);
+      })
+      .on("end", () => {})
+      .on("error", (err) => {
+        expect(() => {
+          throw new Error(err.message);
+        }).not.toThrow();
+      });
 
-    // Verify unzipped data is correct
-    let leftover = Buffer.alloc(0);
-    gunzip.on("data", (chunk) => {
-      let data = Buffer.concat([leftover, chunk]);
-
-      while (data.length >= 4) {
-        const blockLength = data.readUInt32BE(0);
-        if (data.length >= 4 + blockLength) {
-          const blockData = data.subarray(4, 4 + blockLength);
-          lastBlock = LightBlock.decode(blockData);
-          data = data.subarray(4 + blockLength);
-        } else {
-          break;
-        }
-      }
-
-      leftover = data;
+    await new Promise((resolve, reject) => {
+      gunzip.on("end", resolve);
+      gunzip.on("error", reject);
     });
 
-    gunzip.on("end", () => {
-      expect(leftover.length).toBe(0);
-    });
-
-    gunzip.on("error", (err) => {
-      expect(() => {
-        throw new Error(err.message);
-      }).not.toThrow();
-    });
+    const reader = new Reader(data);
+    const blocks: LightBlock[] = [];
+    while (reader.pos < reader.len) {
+      blocks.push(LightBlock.decode(reader));
+    }
+    const lastBlock = blocks[blocks.length - 1];
 
     // Now get blocks via the manifest and raw file
     const tempGunzipped = path.join(os.tmpdir(), "test-gunzipped");
@@ -85,7 +79,6 @@ describe("LightBlockUpload", () => {
     const fileDescriptor = await open(tempFile, "r");
     const buffer = Buffer.alloc(byteEnd - byteStart + 1);
     await fileDescriptor.read(buffer, 0, byteEnd - byteStart + 1, byteStart);
-    console.log("biuff", buffer.toString("hex"));
     const lastBlockManifest = LightBlock.decode(buffer);
 
     // verify block info gotten from binary/manifest is same as gzip

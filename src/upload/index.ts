@@ -158,6 +158,10 @@ export class LightBlockUpload {
       writeStream.on("finish", resolve);
       writeStream.on("error", reject);
     });
+
+    readStream.close();
+    gzip.end();
+    writeStream.end();
     logger.info(`Gzipping file complete: ${outputFile}`);
     return outputFile;
   }
