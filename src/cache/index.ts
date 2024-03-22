@@ -95,18 +95,6 @@ export class LightBlockCache {
     return block.sequence;
   }
 
-  async getUploadHead(): Promise<number> {
-    const head = await this.get("uploadHead");
-    if (!head) return 0;
-    const block = await this.getBlockByHash(head.toString());
-    if (!block) return 0;
-    return block.sequence;
-  }
-
-  async putUploadHead(hash: string): Promise<void> {
-    await this.put("uploadHead", hash);
-  }
-
   async get(key: string): Promise<Uint8Array | null> {
     try {
       const data = await this.db.get(key);
