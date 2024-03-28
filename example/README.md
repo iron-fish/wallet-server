@@ -147,3 +147,7 @@ Once we have the most recent block that is on the main chain, we can roll back t
 - `AccountsManager.handleReorg()`
 - `BlockCache.handleReorg()`
 - Merkle tree: `revertToNoteSize`
+
+## Downloading Block Cache data
+
+- See [download script](./scripts/download_block.ts) for example of how to use download of blocks

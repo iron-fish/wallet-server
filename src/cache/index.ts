@@ -23,7 +23,7 @@ function getCachePath(): string {
   return path.join(".", folderName);
 }
 
-class LightBlockCache {
+export class LightBlockCache {
   private db: LevelUp;
   private cacheDir: string;
 
@@ -60,15 +60,15 @@ class LightBlockCache {
             );
           }
           const hash = content.block.hash;
-          await this.db.put("head", hash);
           await this.db.put(
             hash,
             LightBlock.encode(lightBlock(content)).finish(),
           );
           await this.db.put(content.block.sequence.toString(), hash);
+          await this.db.put("head", hash);
         } else if (content.type === "disconnected") {
           logger.warn(`Removing block ${content.block.sequence}...`);
-          await this.db.put("head", content.block.previous.toString());
+          await this.db.put("head", content.block.previousBlockHash);
           await this.db.del(content.block.sequence);
           await this.db.del(content.block.hash);
         }
@@ -85,6 +85,14 @@ class LightBlockCache {
     const block = await this.get(hash);
     if (!block) return null;
     return LightBlock.decode(block);
+  }
+
+  async getHeadSequence(): Promise<number> {
+    const head = await this.get("head");
+    if (!head) return 0;
+    const block = await this.getBlockByHash(head.toString());
+    if (!block) return 0;
+    return block.sequence;
   }
 
   async get(key: string): Promise<Uint8Array | null> {

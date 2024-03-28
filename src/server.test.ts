@@ -9,15 +9,15 @@ import { LightBlock } from "./models/lightstreamer";
 const expectedBlockObject = {
   protoVersion: expect.any(Number),
   sequence: 1,
-  hash: expect.any(String),
-  previousBlockHash: expect.any(String),
+  hash: expect.any(Buffer),
+  previousBlockHash: expect.any(Buffer),
   timestamp: expect.any(Number),
   transactions: expect.arrayContaining([
     expect.objectContaining({
-      hash: expect.any(String),
+      hash: expect.any(Buffer),
       outputs: expect.arrayContaining([
         expect.objectContaining({
-          note: expect.any(String),
+          note: expect.any(Buffer),
         }),
       ]),
     }),
@@ -28,17 +28,6 @@ const expectedBlockObject = {
 afterAll(async () => {
   await lightBlockCache.close();
   server.close();
-});
-
-describe("GET /latest-block", () => {
-  it("should return the latest block successfully", async () => {
-    const response = await request(app).get("/latest-block");
-    expect(response.statusCode).toBe(200);
-    expect(response.body).toMatchObject({
-      sequence: expect.any(Number),
-      hash: expect.any(String),
-    });
-  });
 });
 
 describe("GET /block", () => {

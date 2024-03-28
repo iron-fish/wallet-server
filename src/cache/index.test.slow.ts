@@ -1,4 +1,3 @@
-import { expect, it, describe, afterAll } from "vitest";
 import { lightBlockCache } from ".";
 
 function delay(ms = 1000) {

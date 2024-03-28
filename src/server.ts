@@ -8,10 +8,16 @@ import swaggerUi from "swagger-ui-express";
 import * as openApiDocument from "./swagger/swagger.json";
 import { logger } from "./utils/logger";
 import { lightBlockCache } from "./cache";
+import { lightBlockUpload } from "./upload";
 
 if (process.env["BUILD_CACHE"] === "true") {
   logger.info("Building block cache...");
   void lightBlockCache.cacheBlocks();
+}
+
+if (process.env["UPLOAD_BLOCKS"] === "true") {
+  logger.info("Starting uploader...");
+  void lightBlockUpload.upload();
 }
 
 export const app = express();
