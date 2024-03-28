@@ -22,7 +22,7 @@ describe("LightBlockUpload", () => {
 
     const tempGz = path.join(os.tmpdir(), "test.gz");
     const tempManifestGz = path.join(os.tmpdir(), "test.manifest.gz");
-    await lightBlockUpload.gzipFile(blockFile.file, tempGz);
+    await lightBlockUpload.gzipFile(blockFile.blocks, tempGz);
     await lightBlockUpload.gzipFile(blockFile.manifest, tempManifestGz);
 
     const gunzip = createGunzip();

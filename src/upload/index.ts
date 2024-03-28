@@ -1,10 +1,12 @@
 import {
+  GetObjectCommand,
   HeadObjectCommand,
+  NoSuchKey,
   NotFound,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
-import * as zlib from "zlib";
+import zlib from "zlib";
 import fs from "fs";
 
 import { LightBlockCache, lightBlockCache } from "@/cache";
@@ -19,8 +21,9 @@ export type BlockRange = {
 };
 
 export type BlockFile = {
-  file: string;
+  blocks: string;
   manifest: string;
+  timestamp: number;
 };
 
 export class LightBlockUpload {
@@ -28,6 +31,8 @@ export class LightBlockUpload {
   private s3Client: S3Client;
   private chunkSizeMb: number;
   private bucket: string;
+  private latestPath = "latest.json";
+  private blockFileName = "blocks";
 
   constructor(cache: LightBlockCache) {
     this.cache = cache;
@@ -46,6 +51,7 @@ export class LightBlockUpload {
     if (!process.env["UPLOAD_CHUNK_SIZE_MB"]) {
       throw new UploadError("UPLOAD_CHUNK_SIZE_MB not set");
     }
+
     this.chunkSizeMb = parseInt(
       process.env["UPLOAD_CHUNK_SIZE_MB"] as string,
       10,
@@ -62,30 +68,62 @@ export class LightBlockUpload {
   }
 
   async upload(): Promise<void> {
-    // eslint-disable-next-line no-constant-condition
-    const fileName = "blocks";
-    const currentUploadSize = (await this.getFileSize(fileName)) || 0;
-    logger.info(
-      `Current file uploaded size: ${currentUploadSize}, creating new upload...`,
-    );
-    const files = await this.createBlockFiles(fileName, currentUploadSize);
+    const latestJson = await this.getObject(this.latestPath);
 
-    logger.info(`Upload: begin...`);
-    const gzip = await this.gzipFile(files.file, `${files.file}.gz`);
-    await this.uploadFile(gzip, "application/gzip");
-    logger.info(`Upload: gzip file complete`);
+    let currentUploadSize = 0;
+    if (!latestJson) {
+      console.warn("No latest json, starting upload from beginning...");
+    } else {
+      const latest: BlockFile = JSON.parse(latestJson);
+      currentUploadSize = (await this.getFileSize(latest.blocks)) || 0;
+    }
 
-    await this.uploadFile(files.file, "application/octet-stream");
-    logger.info(`Upload: binary file complete`);
+    try {
+      logger.info(
+        `Current file uploaded size: ${this.bytesToMbRounded(
+          currentUploadSize,
+        )} MB, creating new upload...`,
+      );
+      const files = await this.createBlockFiles(
+        this.blockFileName,
+        currentUploadSize,
+      );
+      const prefix = String(files.timestamp) + "/";
 
-    const gzipManifest = await this.gzipFile(
-      files.manifest,
-      `${files.manifest}.gz`,
-    );
-    await this.uploadFile(gzipManifest, "application/gzip");
-    logger.info(`Upload: manifest file complete`);
+      logger.info(`Upload: begin...`);
 
-    await this.upload();
+      const uploadedBinary = await this.uploadFile(
+        prefix,
+        files.blocks,
+        "application/octet-stream",
+      );
+      logger.info(`Upload: binary file complete: ${uploadedBinary}`);
+
+      const gzipManifest = await this.gzipFile(
+        files.manifest,
+        `${files.manifest}.gz`,
+      );
+      const uploadedManifest = await this.uploadFile(
+        prefix,
+        gzipManifest,
+        "application/gzip",
+      );
+      logger.info(`Upload: manifest file complete: ${uploadedManifest}`);
+
+      const uploadedLatest = await this.writeLatestTimestamp(
+        uploadedManifest,
+        uploadedBinary,
+        files.timestamp,
+      );
+      await this.uploadFile("", uploadedLatest, "plain/text");
+      logger.info(
+        `Upload: updating latest json file complete: ${uploadedLatest}`,
+      );
+    } catch (error) {
+      logger.error(`Upload failed, will retry. Error: ${error}`);
+    }
+
+    void this.upload();
   }
 
   async createBlockFiles(
@@ -98,14 +136,23 @@ export class LightBlockUpload {
 
     let i = 1;
     let currentByte = 0;
+    const nextUploadSize = this.chunkSizeMb * 1024 * 1024 + previousSize;
     const outputFile = fs.createWriteStream(outputFileName);
     const manifestFile = fs.createWriteStream(manifestFileName);
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const block = await this.cache.getBlockBySequence(i);
+      // end of chain, initial upload
       if (block == null && previousSize === 0) break;
       if (block == null) {
+        logger.info(
+          `${this.bytesToMbRounded(
+            outputFile.bytesWritten,
+          )}/${this.bytesToMbRounded(
+            nextUploadSize,
+          )} MB written, sequence: ${i}, waiting for next block...`,
+        );
         await this.waitForNextBlock();
         continue;
       }
@@ -117,11 +164,7 @@ export class LightBlockUpload {
       );
       currentByte += blockBuffer.byteLength;
 
-      if (
-        !!previousSize &&
-        outputFile.bytesWritten >=
-          Math.max(this.chunkSizeMb * 1024 * 1024 + previousSize)
-      ) {
+      if (!!previousSize && outputFile.bytesWritten >= nextUploadSize) {
         break;
       }
       i++;
@@ -131,17 +174,45 @@ export class LightBlockUpload {
     manifestFile.end();
 
     logger.info(
-      `New file upload created, size ${
-        outputFile.bytesWritten / 1024 / 1024
-      } MB, blocks: ${i - 1}`,
+      `New file upload created, size ${this.bytesToMbRounded(
+        outputFile.bytesWritten,
+      )} MB, blocks: ${i - 1}`,
     );
-    return { file: outputFileName, manifest: manifestFileName };
+    return {
+      blocks: outputFileName,
+      manifest: manifestFileName,
+      timestamp: Date.now(),
+    };
+  }
+
+  async writeLatestTimestamp(
+    manifest: string,
+    blocks: string,
+    timestamp: number,
+  ): Promise<string> {
+    const data: BlockFile = {
+      manifest,
+      blocks,
+      timestamp,
+    };
+    await fs.promises
+      .writeFile(this.latestPath, JSON.stringify(data))
+      .catch((err) => {
+        throw new UploadError(
+          `Failed to write to ${this.latestPath}: ${err.message}`,
+        );
+      });
+    return this.latestPath;
   }
 
   private deleteFileIfExists(fileName: string): void {
     if (fs.existsSync(fileName)) {
       fs.unlinkSync(fileName);
     }
+  }
+
+  private bytesToMbRounded(bytes: number): string {
+    return (bytes / 1024 / 1024).toFixed(4);
   }
 
   private async waitForNextBlock(): Promise<void> {
@@ -166,18 +237,23 @@ export class LightBlockUpload {
     return outputFile;
   }
 
-  async uploadFile(fileName: string, contentType: string): Promise<void> {
-    // due to consistentcy model of S3, should be safe to overwrite upload
+  async uploadFile(
+    prefix: string,
+    fileName: string,
+    contentType: string,
+  ): Promise<string> {
+    const Key = prefix + fileName;
     const fileStream = fs.createReadStream(fileName);
     const fileSize = fs.statSync(fileName).size;
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       ContentType: contentType,
       ContentLength: fileSize,
-      Key: fileName,
+      Key,
       Body: fileStream,
     });
     await this.s3Client.send(command);
+    return Key;
   }
 
   async getFileSize(key: string): Promise<number | null> {
@@ -192,6 +268,19 @@ export class LightBlockUpload {
     } catch (error) {
       if (error instanceof NotFound) {
         return null;
+      }
+      throw error;
+    }
+  }
+
+  async getObject(Key: string): Promise<string | undefined> {
+    const getObjectCommand = new GetObjectCommand({ Bucket: this.bucket, Key });
+    try {
+      const response = await this.s3Client.send(getObjectCommand);
+      return response.Body?.transformToString();
+    } catch (error) {
+      if (error instanceof NoSuchKey) {
+        return undefined;
       }
       throw error;
     }

@@ -68,7 +68,7 @@ export class LightBlockCache {
           await this.db.put(content.block.sequence.toString(), hash);
         } else if (content.type === "disconnected") {
           logger.warn(`Removing block ${content.block.sequence}...`);
-          await this.db.put("head", content.block.previous.toString());
+          await this.db.put("head", content.block.previousBlockHash);
           await this.db.del(content.block.sequence);
           await this.db.del(content.block.hash);
         }
