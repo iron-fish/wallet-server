@@ -1,21 +1,24 @@
-# Use an official Node.js runtime as the base image
-FROM node:20
-
-# Set the working directory in the container to /app
+# ---- Base Node ----
+FROM node:20 AS base
 WORKDIR /app
+COPY package.json yarn.lock ./
 
-# Copy package.json and package-lock.json to the working directory
-COPY package*.json ./
-COPY yarn.lock ./
-
-# Install any needed packages specified in package.json
-RUN yarn
-
-# Copy the rest of your app's source code to /app
+# ---- Build ----
+FROM base AS build
+WORKDIR /app
 COPY . .
-
-# Build the app
+RUN yarn install --frozen-lockfile
 RUN yarn build
 
-# Define the command to run your app using CMD which defines your runtime
+# ---- Node Modules ----
+FROM base AS modules
+WORKDIR /app
+RUN yarn install --production --frozen-lockfile
+
+# ---- Release ----
+FROM base AS release
+WORKDIR /app
+COPY --from=build /app/dist ./dist
+COPY --from=modules /app/node_modules ./node_modules
+
 CMD ["yarn", "start"]
