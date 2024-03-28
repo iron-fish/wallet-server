@@ -20,7 +20,7 @@ message LightBlock {
   uint64 sequence = 2;          // the height of this block
   bytes hash = 3;             // the ID (hash) of this block, same as explorer
   bytes previousBlockHash = 4;         // the ID (hash) of this block's predecessor
-  uint32 timestamp = 5;            // Unix epoch time when the block was mined
+  uint64 timestamp = 5;            // Unix epoch time when the block was mined
   repeated LightTransaction transactions = 6; // zero or more compact transactions from this block
   uint64 noteSize = 7; // the size of the notes tree after adding transactions from this block.
 

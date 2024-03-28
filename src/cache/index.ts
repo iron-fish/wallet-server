@@ -60,12 +60,12 @@ export class LightBlockCache {
             );
           }
           const hash = content.block.hash;
-          await this.db.put("head", hash);
           await this.db.put(
             hash,
             LightBlock.encode(lightBlock(content)).finish(),
           );
           await this.db.put(content.block.sequence.toString(), hash);
+          await this.db.put("head", hash);
         } else if (content.type === "disconnected") {
           logger.warn(`Removing block ${content.block.sequence}...`);
           await this.db.put("head", content.block.previousBlockHash);
