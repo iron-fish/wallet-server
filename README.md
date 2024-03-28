@@ -69,3 +69,7 @@ All that is needed to generate a compliant gRPC client using your favorite gRPC 
 ## Environment variables
 
 See [.env.example](.env.example) for the environment variables that can be used with the server. The repository is compliant with usage of standard environment variables or [dotenv](https://www.npmjs.com/package/dotenv)
+
+## Test fixture database
+
+To create a reusable database, the cache was hardcoded to stop being built at 10 blocks. The database files relating to the cache (`block-cache/`) were copied to test fixture directory (`test/dbfixture/`). A global setup copies those files into a gitignored folder (`test/cache/`) for use when running tests. This prevents tests updating the db and causing changelogs. To update the fixture, just run the cache with a hardcoded stop point (currently 10 blocks), and overwrite files in `test/dbfixture/` directory.
