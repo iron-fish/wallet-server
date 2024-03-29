@@ -10,4 +10,4 @@ node_modules/
 *yarn-error.log
 test/*
 blocks*
-latest.json
+manifest.json

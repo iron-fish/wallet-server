@@ -18,7 +18,7 @@ describe("LightBlockUpload", () => {
 
   it("should gzip blocks/manifest, last block should match", async () => {
     const tempFile = path.join(os.tmpdir(), "test");
-    const blockFile = await lightBlockUpload.createBlockFiles(tempFile, 0, 0);
+    const blockFile = await lightBlockUpload.createChunk(tempFile, 0, 0);
 
     const tempGz = path.join(os.tmpdir(), "test.gz");
     const tempManifestGz = path.join(os.tmpdir(), "test.manifest.gz");
