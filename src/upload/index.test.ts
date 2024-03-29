@@ -18,12 +18,21 @@ describe("LightBlockUpload", () => {
 
   it("should gzip blocks/manifest, last block should match", async () => {
     const tempFile = path.join(os.tmpdir(), "test");
-    const blockFile = await lightBlockUpload.createChunk(tempFile, 0, 0);
+    const firstBlock = (await lightBlockCache.getBlockBySequence(
+      1,
+    )) as LightBlock;
+    const triggerUploadTime =
+      firstBlock.timestamp - 1.1 * Number(process.env["MAX_UPLOAD_LAG_MS"]);
+    const blockFile = await lightBlockUpload.createChunk(
+      tempFile,
+      firstBlock.sequence,
+      triggerUploadTime,
+    );
 
     const tempGz = path.join(os.tmpdir(), "test.gz");
-    const tempManifestGz = path.join(os.tmpdir(), "test.manifest.gz");
+    const bytesRangeGzip = path.join(os.tmpdir(), "test.bytesRange.gz");
     await lightBlockUpload.gzipFile(blockFile.blocks, tempGz);
-    await lightBlockUpload.gzipFile(blockFile.manifest, tempManifestGz);
+    await lightBlockUpload.gzipFile(blockFile.byteRangesFile, bytesRangeGzip);
 
     const gunzip = createGunzip();
     const inputFile = fs.createReadStream(tempGz);
@@ -57,7 +66,7 @@ describe("LightBlockUpload", () => {
     const tempGunzipped = path.join(os.tmpdir(), "test-gunzipped");
     let lastManifestLine: string | undefined;
     await new Promise((resolve) => {
-      fs.createReadStream(tempManifestGz)
+      fs.createReadStream(bytesRangeGzip)
         .pipe(createGunzip())
         .pipe(fs.createWriteStream(tempGunzipped))
         .on("finish", resolve);
