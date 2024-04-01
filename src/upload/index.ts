@@ -28,6 +28,7 @@ export type ManifestChunk = {
 
 export type ManifestFile = {
   chunks: ManifestChunk[];
+  timestamp: number;
 };
 
 export class LightBlockUpload {
@@ -113,7 +114,8 @@ export class LightBlockUpload {
       startSequence,
       lastUploadTimestamp,
     );
-    const prefix = String(chunk.timestamp) + "/";
+    const finalizedPrefix = chunk.finalized ? "finalized/" : "non-finalized/";
+    const prefix = finalizedPrefix + String(chunk.timestamp) + "/";
 
     logger.info(`Upload: begin...`);
 
@@ -249,7 +251,10 @@ export class LightBlockUpload {
         ? manifest.chunks.concat([relativeChunk])
         : manifest.chunks.slice(0, -1).concat([relativeChunk]);
     }
-    const updatedManifest: ManifestFile = { chunks: chunks };
+    const updatedManifest: ManifestFile = {
+      chunks: chunks,
+      timestamp: chunk.timestamp,
+    };
     await fs.promises
       .writeFile(this.manifestPath, JSON.stringify(updatedManifest, null, 2))
       .catch((err) => {
