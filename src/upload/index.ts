@@ -294,21 +294,20 @@ export class LightBlockUpload {
   }
 
   async gzipFile(inputFile: string, outputFile: string): Promise<string> {
-    const writeStream = fs.createWriteStream(outputFile);
-    const readStream = fs.createReadStream(inputFile);
-    const gzip = zlib.createGzip();
-    readStream.pipe(gzip).pipe(writeStream);
+    return new Promise((resolve, reject) => {
+      const writeStream = fs.createWriteStream(outputFile);
+      const readStream = fs.createReadStream(inputFile);
+      const gzip = zlib.createGzip();
 
-    await new Promise((resolve, reject) => {
-      writeStream.on("finish", resolve);
-      writeStream.on("error", reject);
+      readStream
+        .pipe(gzip)
+        .pipe(writeStream)
+        .on("error", reject)
+        .on("finish", () => {
+          logger.info(`Gzipping file complete: ${outputFile}`);
+          resolve(outputFile);
+        });
     });
-
-    readStream.close();
-    gzip.end();
-    writeStream.end();
-    logger.info(`Gzipping file complete: ${outputFile}`);
-    return outputFile;
   }
 
   async getObject(Key: string): Promise<string | undefined> {
