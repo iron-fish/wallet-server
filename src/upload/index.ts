@@ -1,13 +1,11 @@
 import {
   GetObjectCommand,
-  HeadObjectCommand,
   NoSuchKey,
-  NotFound,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
-import zlib from "zlib";
 import fs from "fs";
+import zlib from "zlib";
 
 import { LightBlockCache, lightBlockCache } from "@/cache";
 import { LightBlock } from "@/models/lightstreamer";
@@ -20,19 +18,25 @@ export type BlockRange = {
   end: number;
 };
 
-export type BlockFile = {
+export type ManifestChunk = {
   blocks: string;
-  manifest: string;
+  range: BlockRange;
+  byteRangesFile: string;
   timestamp: number;
+  finalized: boolean;
+};
+
+export type ManifestFile = {
+  chunks: ManifestChunk[];
 };
 
 export class LightBlockUpload {
   private cache: LightBlockCache;
   private s3Client: S3Client;
-  private chunkSizeMb: number;
+  private chunkSizeBytes: number;
   private maxUploadLagMs: number;
   private bucket: string;
-  private latestPath = "latest.json";
+  private manifestPath = "manifest.json";
   private blockFileName = "blocks";
 
   constructor(cache: LightBlockCache) {
@@ -49,15 +53,15 @@ export class LightBlockUpload {
     if (!process.env["BUCKET_NAME"]) {
       throw new UploadError("BUCKET_NAME not set");
     }
-    if (!process.env["UPLOAD_CHUNK_SIZE_MB"]) {
-      throw new UploadError("UPLOAD_CHUNK_SIZE_MB not set");
+    if (!process.env["UPLOAD_CHUNK_SIZE_BYTES"]) {
+      throw new UploadError("UPLOAD_CHUNK_SIZE_BYTES not set");
     }
     if (!process.env["MAX_UPLOAD_LAG_MS"]) {
       throw new UploadError("MAX_UPLOAD_LAG_MS not set");
     }
 
-    this.chunkSizeMb = parseInt(
-      process.env["UPLOAD_CHUNK_SIZE_MB"] as string,
+    this.chunkSizeBytes = parseInt(
+      process.env["UPLOAD_CHUNK_SIZE_BYTES"] as string,
       10,
     );
     this.maxUploadLagMs = parseInt(
@@ -87,83 +91,80 @@ export class LightBlockUpload {
   }
 
   private async uploadInner(): Promise<void> {
-    const latestJson = await this.getObject(this.latestPath);
+    const manifestJson = await this.getObject(this.manifestPath);
 
-    let currentUploadSize = 0;
     let lastUploadTimestamp = 0;
-    if (!latestJson) {
-      console.warn("No latest json, starting upload from beginning...");
+    let startSequence = 1;
+    let manifest: ManifestFile | null = null;
+    if (!manifestJson) {
+      console.warn("No manifest.json, starting upload from beginning...");
     } else {
-      const latest: BlockFile = JSON.parse(latestJson);
-      currentUploadSize = (await this.getFileSize(latest.blocks)) || 0;
-      lastUploadTimestamp = latest.timestamp;
+      manifest = JSON.parse(manifestJson) as ManifestFile;
+      const latestBlock = manifest.chunks[manifest.chunks.length - 1];
+      startSequence = latestBlock.finalized
+        ? latestBlock.range.end + 1
+        : latestBlock.range.start;
+      lastUploadTimestamp = latestBlock.timestamp;
     }
 
-    logger.info(
-      `Current file uploaded size: ${this.bytesToMbRounded(
-        currentUploadSize,
-      )} MB, creating new upload...`,
-    );
-    const files = await this.createBlockFiles(
+    logger.info(`Creating new upload, beginning at block ${startSequence}...`);
+    const chunk = await this.createChunk(
       this.blockFileName,
-      currentUploadSize,
+      startSequence,
       lastUploadTimestamp,
     );
-    const prefix = String(files.timestamp) + "/";
+    const prefix = String(chunk.timestamp) + "/";
 
     logger.info(`Upload: begin...`);
 
     const uploadedBinary = await this.uploadFile(
       prefix,
-      files.blocks,
+      chunk.blocks,
       "application/octet-stream",
     );
     logger.info(`Upload: binary file complete: ${uploadedBinary}`);
 
-    const gzipManifest = await this.gzipFile(
-      files.manifest,
-      `${files.manifest}.gz`,
+    const bytesRangeGzip = await this.gzipFile(
+      chunk.byteRangesFile,
+      `${chunk.byteRangesFile}.gz`,
     );
-    const uploadedManifest = await this.uploadFile(
+    const uploadedBytesRange = await this.uploadFile(
       prefix,
-      gzipManifest,
+      bytesRangeGzip,
       "application/gzip",
     );
-    logger.info(`Upload: manifest file complete: ${uploadedManifest}`);
+    logger.info(`Upload: bytes range file complete: ${uploadedBytesRange}`);
 
-    const uploadedLatest = await this.writeLatestJson(
-      uploadedManifest,
+    const updatedManifest = await this.updateManifest(
+      manifest,
+      chunk,
       uploadedBinary,
-      files.timestamp,
+      uploadedBytesRange,
     );
-    await this.uploadFile("", uploadedLatest, "application/json");
+    await this.uploadFile("", updatedManifest, "application/json");
     logger.info(
-      `Upload: updating latest json file complete: ${uploadedLatest}`,
+      `Upload: updating manifest json file complete: ${updatedManifest}`,
     );
-
-    void this.upload();
   }
 
-  async createBlockFiles(
+  async createChunk(
     outputFileName: string,
-    previousSize: number,
+    startSequence: number,
     lastUploadTimestamp: number,
-  ): Promise<BlockFile> {
+  ): Promise<ManifestChunk> {
     this.deleteFileIfExists(outputFileName);
-    const manifestFileName = `${outputFileName}.manifest`;
-    this.deleteFileIfExists(manifestFileName);
+    const byteRangesFileName = `${outputFileName}.byteRanges.csv`;
+    this.deleteFileIfExists(byteRangesFileName);
 
-    let currentSequence = 1;
+    let currentSequence = startSequence;
     let currentByte = 0;
-    const nextUploadSize = this.chunkSizeMb * 1024 * 1024 + previousSize;
+    let finalized = false;
     const outputFile = fs.createWriteStream(outputFileName);
-    const manifestFile = fs.createWriteStream(manifestFileName);
+    const byteRangesFile = fs.createWriteStream(byteRangesFileName);
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const block = await this.cache.getBlockBySequence(currentSequence);
-      // end of chain, initial upload
-      if (block == null && previousSize === 0) break;
       if (block == null) {
         const currentTimestamp = Date.now();
         const hoursSinceLastUpload =
@@ -172,7 +173,7 @@ export class LightBlockUpload {
           `${this.bytesToMbRounded(
             outputFile.bytesWritten,
           )}/${this.bytesToMbRounded(
-            nextUploadSize,
+            this.chunkSizeBytes,
           )} MB written, sequence: ${currentSequence}, hours since last upload: ${hoursSinceLastUpload.toFixed(
             2,
           )}/${
@@ -185,15 +186,16 @@ export class LightBlockUpload {
 
       const blockBuffer = LightBlock.encode(block).finish();
       outputFile.write(blockBuffer);
-      manifestFile.write(
+      byteRangesFile.write(
         `${currentSequence},${currentByte},${
           currentByte + blockBuffer.byteLength - 1
         }\n`,
       );
       currentByte += blockBuffer.byteLength;
 
-      if (!!previousSize && outputFile.bytesWritten >= nextUploadSize) {
+      if (outputFile.bytesWritten >= this.chunkSizeBytes) {
         logger.info("Chunk size reached, finishing file creation...");
+        finalized = true;
         break;
       }
       if (
@@ -209,7 +211,7 @@ export class LightBlockUpload {
     }
 
     outputFile.end();
-    manifestFile.end();
+    byteRangesFile.end();
 
     logger.info(
       `New file upload created, size ${this.bytesToMbRounded(
@@ -218,29 +220,44 @@ export class LightBlockUpload {
     );
     return {
       blocks: outputFileName,
-      manifest: manifestFileName,
+      byteRangesFile: byteRangesFileName,
       timestamp: Date.now(),
+      range: {
+        start: startSequence,
+        end: currentSequence,
+      },
+      finalized,
     };
   }
 
-  async writeLatestJson(
-    manifest: string,
-    blocks: string,
-    timestamp: number,
+  async updateManifest(
+    manifest: ManifestFile | null,
+    chunk: ManifestChunk,
+    blocksGz: string,
+    byteRangesGz: string,
   ): Promise<string> {
-    const data: BlockFile = {
-      manifest,
-      blocks,
-      timestamp,
+    const relativeChunk = {
+      ...chunk,
+      blocks: blocksGz,
+      byteRangesFile: byteRangesGz,
     };
+    let chunks = [relativeChunk];
+    if (manifest !== null) {
+      const lastChunkFinalized =
+        manifest.chunks[manifest.chunks.length - 1].finalized;
+      chunks = lastChunkFinalized
+        ? manifest.chunks.concat([relativeChunk])
+        : manifest.chunks.slice(0, -1).concat([relativeChunk]);
+    }
+    const updatedManifest: ManifestFile = { chunks: chunks };
     await fs.promises
-      .writeFile(this.latestPath, JSON.stringify(data))
+      .writeFile(this.manifestPath, JSON.stringify(updatedManifest, null, 2))
       .catch((err) => {
         throw new UploadError(
-          `Failed to write to ${this.latestPath}: ${err.message}`,
+          `Failed to write to ${this.manifestPath}: ${err.message}`,
         );
       });
-    return this.latestPath;
+    return this.manifestPath;
   }
 
   private deleteFileIfExists(fileName: string): void {
@@ -255,24 +272,6 @@ export class LightBlockUpload {
 
   private async waitForNextBlock(): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 60000)); // Wait for 1 minute
-  }
-
-  async gzipFile(inputFile: string, outputFile: string): Promise<string> {
-    const writeStream = fs.createWriteStream(outputFile);
-    const readStream = fs.createReadStream(inputFile);
-    const gzip = zlib.createGzip();
-    readStream.pipe(gzip).pipe(writeStream);
-
-    await new Promise((resolve, reject) => {
-      writeStream.on("finish", resolve);
-      writeStream.on("error", reject);
-    });
-
-    readStream.close();
-    gzip.end();
-    writeStream.end();
-    logger.info(`Gzipping file complete: ${outputFile}`);
-    return outputFile;
   }
 
   async uploadFile(
@@ -294,21 +293,21 @@ export class LightBlockUpload {
     return Key;
   }
 
-  async getFileSize(key: string): Promise<number | null> {
-    const command = new HeadObjectCommand({
-      Bucket: this.bucket,
-      Key: key,
-    });
+  async gzipFile(inputFile: string, outputFile: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const writeStream = fs.createWriteStream(outputFile);
+      const readStream = fs.createReadStream(inputFile);
+      const gzip = zlib.createGzip();
 
-    try {
-      const { ContentLength } = await this.s3Client.send(command);
-      return ContentLength || null;
-    } catch (error) {
-      if (error instanceof NotFound) {
-        return null;
-      }
-      throw error;
-    }
+      readStream
+        .pipe(gzip)
+        .pipe(writeStream)
+        .on("error", reject)
+        .on("finish", () => {
+          logger.info(`Gzipping file complete: ${outputFile}`);
+          resolve(outputFile);
+        });
+    });
   }
 
   async getObject(Key: string): Promise<string | undefined> {
