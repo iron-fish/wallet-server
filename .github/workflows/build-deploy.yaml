@@ -79,9 +79,9 @@ jobs:
     name: Redeploy production server beanstalk environment
     runs-on: ubuntu-latest
     env:
-      MAINNET: ${{ needs.setup.outputs.mainnet }}
-      AWS_REGION: ${{ needs.setup.outputs.aws-region }}
-      ENVIRONMENT_NAME: ${{ needs.setup.outputs.environment-name }}
+      MAINNET: ${{ needs.setup.outputs.MAINNET }}
+      AWS_REGION: ${{ needs.setup.outputs.AWS_REGION }}
+      ENVIRONMENT_NAME: ${{ needs.setup.outputs.ENVIRONMENT_NAME }}
     needs: [build-and-push-image, setup]
     steps:
       - name: Configure AWS Credentials
