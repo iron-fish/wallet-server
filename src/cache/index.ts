@@ -7,6 +7,7 @@ import { ifClient } from "@/utils/ironfish";
 import { lightBlock } from "@/utils/lightBlock";
 import { LightBlock } from "@/models/lightstreamer";
 import { logger } from "@/utils/logger";
+import { RpcClient } from "@ironfish/sdk";
 
 function getCachePath(): string {
   if (process.env["CACHE_PATH"] && process.env["CACHE_FOLDER"]) {
@@ -39,8 +40,18 @@ export class LightBlockCache {
   }
 
   async cacheBlocks(): Promise<void> {
-    const rpc = await ifClient.getClient();
+    try {
+      const rpc = await ifClient.getClient();
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        await this.cacheBlocksInner(rpc);
+      }
+    } catch (error) {
+      logger.error(`Caching failed, will retry. Error: ${error}`);
+    }
+  }
 
+  private async cacheBlocksInner(rpc: RpcClient): Promise<void> {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const head = await this.get("head");
