@@ -28,19 +28,21 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     outputs:
-      MAINNET: ${{ steps.set-mainnet.outputs.MAINNET }}
+      MAINNET: ${{ steps.set-vars.outputs.MAINNET }}
       AWS_REGION: ${{ steps.set-vars.outputs.AWS_REGION }}
       ENVIRONMENT_NAME: ${{ steps.set-vars.outputs.ENVIRONMENT_NAME }}
     steps:
-      - name: Set mainnet
-        id: set-mainnet
-        run: |
-          echo "MAINNET=$(if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.network }}" == "mainnet" ]] || [[ "${{ github.event_name }}" == "release" && "${{ github.event.action }}" == "published" ]]; then echo "true"; else echo "false"; fi)" >> $GITHUB_ENV
       - name: Set variables
         id: set-vars
         run: |
-          echo "AWS_REGION=$(if [[ "${{ steps.set-mainnet.outputs.mainnet }}" == "true" ]]; then echo "us-east-1"; else echo "us-west-1"; fi)" >> $GITHUB_ENV
-          echo "ENVIRONMENT_NAME=$(if [[ "${{ steps.set-mainnet.outputs.mainnet }}" == "true" ]]; then echo "wallet-server"; else echo "testnet-wallet-server"; fi)" >> $GITHUB_ENV
+          MAINNET=$(if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.network }}" == "mainnet" ]] || [[ "${{ github.event_name }}" == "release" && "${{ github.event.action }}" == "published" ]]; then echo "true"; else echo "false"; fi)
+          echo "MAINNET=$MAINNET" >> $GITHUB_OUTPUT
+          echo "AWS_REGION=$(if [[ "$MAINNET" == "true" ]]; then echo "us-east-1"; else echo "us-west-1"; fi)" >> $GITHUB_OUTPUT
+          echo "ENVIRONMENT_NAME=$(if [[ "$MAINNET" == "true" ]]; then echo "wallet-server"; else echo "testnet-wallet-server"; fi)" >> $GITHUB_OUTPUT
+          echo "MAINNET=$MAINNET"
+          echo "AWS_REGION=$AWS_REGION"
+          echo "ENVIRONMENT_NAME=$ENVIRONMENT_NAME"
+
   build-and-push-image:
     needs: setup
     runs-on: ubuntu-latest
