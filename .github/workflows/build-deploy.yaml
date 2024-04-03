@@ -76,7 +76,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
   Deploy:
-    name: Redeploy production server beanstalk environment
+    name: Redeploy server beanstalk environment
     runs-on: ubuntu-latest
     env:
       MAINNET: ${{ needs.setup.outputs.MAINNET }}
