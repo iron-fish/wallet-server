@@ -40,7 +40,7 @@ The wallet server makes it possible to build/run a fully private light wallet (o
 - The [uploader](./src/uploader/) can upload chunked backups of light blocks for simiplified download by clients.
 
 ### S3 Storage
-- In the `manifest.json` there is a representation of where all the blocks are in the bucket. In the corresponding folders is a binary file containing consecutive serialization of `LightBlock`s. The byte position for each block in the `blocks` file is recorded in `blocks.byteRanges.csv.gz`. Using this, a user can download exactly the blocks they need for a client using an HTTP `Range` request.
+- In the `manifest.json` there is a representation of where all the blocks are in the bucket. In the corresponding folders is a binary file containing consecutive serialization of `LightBlock`s. The byte position for each block in the `blocks` file is recorded in `blocks.byteRanges.csv.gz`. Using this, a user can download exactly the blocks they need for a client using an HTTP `Range` request. Block ranges are moved to the `finalized` folder once the amount of data in the file reaches a file size limit (currently 50MB).
 
 ### File Structure
 ```
