@@ -36,6 +36,34 @@ The wallet server makes it possible to build/run a fully private light wallet (o
   - `yarn dev send assetId=51f33a2f14f92735e562dc658a5639279ddca3d5079a6d1242b2a588a9cbf44c toPublicAddress=c016b357465f41fcfd896eb6b878bcd865726779096d208f64e54347df9b46c7 amount=1 memo=test fee=1`
 - wait for syncing of wallet to occur, this may take some time
 
+## Light Block Bucket Storage
+- The [uploader](./src/uploader/) can upload chunked backups of light blocks for simiplified download by clients.
+
+### S3 Storage
+- In the `manifest.json` there is a representation of where all the blocks are in the bucket. In the corresponding folders is a binary file containing consecutive serialization of `LightBlock`s. The byte position for each block in the `blocks` file is recorded in `blocks.byteRanges.csv.gz`. Using this, a user can download exactly the blocks they need for a client using an HTTP `Range` request.
+
+### File Structure
+```
+s3_bucket_name/
+│
+├── finalized/
+│   ├── 1712251453372/
+│   │   ├── blocks
+│   │   └── blocks.byteRanges.csv.gz
+│   ├── 1712233333333/
+│   │   ├── blocks
+│   │   └── blocks.byteRanges.csv.gz
+│   └── ... (additional timestamp folders as needed)
+│
+├── non-finalized/
+│   └── 1712299999999/
+│       ├── blocks
+│       └── blocks.byteRanges.csv.gz
+│
+└── manifest.json
+```
+
+
 ## Account balances for any account
 
 Requesting blocks via the `getBlockRange` endpoint provides all transactions that have occurred on the network. The `output`s provide what notes have been created in a given transaction, the `spend`s (the important piece being the nullifiers) tell you which notes have been spent in a transaction. Given these two pieces of information, you can constructed the balance for any account for which you have the spending key.
@@ -48,12 +76,12 @@ Creating transactions requires low level cryptography calls for proofs and trans
 
 - Install dependencies: `yarn`
 - Codegen protobuf models: `yarn build`
-- Start gRPC server: `yarn start`
+- Start server: `yarn start`
 - Hot Reloaded dev server: `yarn dev`
 
 ## Docker
 
-- `docker pull ghcr.io/iron-fish/wallet-server`
+- `docker pull ghcr.io/iron-fish/wallet-server:mainnet`
 
 ## Server <-> Iron Fish Node Connection
 
