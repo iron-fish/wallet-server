@@ -1,6 +1,7 @@
 # `ironfish-wallet-server`
+![wallet-server](https://github.com/iron-fish/wallet-server/assets/26990067/a00752a4-35e3-4d74-b9a5-5596abf321a1)
 
-The wallet server makes it possible to build/run a fully private light wallet (on nearly any device) without having to run a ironfish node locally. The implementation is a gRPC caching server that interacts with an [ironfish](https://github.com/iron-fish/ironfish) node to provide a cached interface for light wallet clients.  Running this server allows clients to use a generated gRPC client to make typesafe calls to the client server to request "LightBlocks". These blocks are minimal represenations of Iron Fish network blocks. We have included an [example light wallet client](example/README.md) implementation in this repo.
+The wallet server makes it possible to build/run a fully private light wallet (on nearly any device) without having to run a ironfish node locally. The implementation is a HTTP REST caching server that interacts with an [ironfish](https://github.com/iron-fish/ironfish) node to provide a cached interface for light wallet clients. The REST server exposes OpenAPI defined endpoints for simple client generation (see [example](example). The "light blocks" are minimal representations of Iron Fish blocks that assume trust in the host of the blocks, as the client device will not prove the blocks are valid. The light blocks are encoded via [protobuf](protos) to allow simple serialization/deserialized for network transfer. We have included an [example light wallet client](example/README.md) implementation in this repo.
 
 ## Quick start local setup
 
