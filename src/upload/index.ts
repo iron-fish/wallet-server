@@ -167,22 +167,19 @@ export class LightBlockUpload {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const block = await this.cache.getBlockBySequence(currentSequence);
-      if (block == null) {
+      const finalizedSequence = await this.cache.getFinalizedBlockSequence();
+      if (!block || block.sequence > finalizedSequence) {
         const currentTimestamp = Date.now();
         const hoursSinceLastUpload =
           (currentTimestamp - lastUploadTimestamp) / (1000 * 60 * 60);
         logger.info(
-          `${this.bytesToMbRounded(
-            outputFile.bytesWritten,
-          )}/${this.bytesToMbRounded(
-            this.chunkSizeBytes,
-          )} MB written, sequence: ${currentSequence}, hours since last upload: ${hoursSinceLastUpload.toFixed(
-            2,
-          )}/${
-            this.maxUploadLagMs / (1000 * 60 * 60)
-          }, waiting for next block...`,
+          `${this.bytesToMbRounded(outputFile.bytesWritten)}/` +
+            `${this.bytesToMbRounded(this.chunkSizeBytes)} MB written,` +
+            ` sequence: ${currentSequence}, finalized sequence: ${finalizedSequence}` +
+            `hours since last upload: ${hoursSinceLastUpload.toFixed(2)}/` +
+            `${this.maxUploadLagMs / (1000 * 60 * 60)}, waiting...`,
         );
-        await this.waitForNextBlock();
+        await this.wait();
         continue;
       }
 
@@ -275,8 +272,8 @@ export class LightBlockUpload {
     return (bytes / 1024 / 1024).toFixed(4);
   }
 
-  private async waitForNextBlock(): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, 60000)); // Wait for 1 minute
+  private async wait(ms = 60000): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   async uploadFile(
