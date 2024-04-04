@@ -11,6 +11,10 @@ import { LightBlock } from "../models/lightstreamer";
 import { createInterface } from "readline";
 
 describe("LightBlockUpload", () => {
+  beforeAll(async () => {
+    await lightBlockCache.open();
+  });
+
   afterAll(async () => {
     jest.resetAllMocks();
     await lightBlockCache.close();
