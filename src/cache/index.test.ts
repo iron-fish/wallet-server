@@ -2,12 +2,16 @@ import { LightBlock } from "../models/lightstreamer";
 import { blockFixture } from "../../test/fixtures";
 import { lightBlockCache } from ".";
 
-afterAll(async () => {
-  await lightBlockCache.close();
-});
-
 describe("LightBlockCache", () => {
   const fakeHash = "hash1";
+
+  beforeAll(async () => {
+    await lightBlockCache.open();
+  });
+
+  afterAll(async () => {
+    await lightBlockCache.close();
+  });
 
   it("storing and retrieving block is successful", async () => {
     const encoded = LightBlock.encode(blockFixture).finish();
@@ -28,5 +32,18 @@ describe("LightBlockCache", () => {
 
     const block = await lightBlockCache.get("head");
     expect(block!.toString()).toEqual("fakehash");
+  });
+
+  it("finality sequence is always behind head sequence by specified amount", async () => {
+    const mockedSequence = 100;
+    const block = {
+      ...blockFixture,
+      sequence: mockedSequence,
+    };
+    await lightBlockCache.cacheBlock(block);
+    const finalitySequence = await lightBlockCache.getFinalizedBlockSequence();
+    expect(mockedSequence - lightBlockCache.finalityBlockCount).toEqual(
+      finalitySequence,
+    );
   });
 });

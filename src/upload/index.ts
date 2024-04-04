@@ -174,8 +174,8 @@ export class LightBlockUpload {
           (currentTimestamp - lastUploadTimestamp) / (1000 * 60 * 60);
         logger.info(
           `${this.bytesToMbRounded(outputFile.bytesWritten)}/` +
-            `${this.bytesToMbRounded(this.chunkSizeBytes)} MB written,` +
-            ` sequence: ${currentSequence}, finalized sequence: ${finalizedSequence}` +
+            `${this.bytesToMbRounded(this.chunkSizeBytes)} MB written, ` +
+            `sequence: ${currentSequence}, finalized sequence: ${finalizedSequence}, ` +
             `hours since last upload: ${hoursSinceLastUpload.toFixed(2)}/` +
             `${this.maxUploadLagMs / (1000 * 60 * 60)}, waiting...`,
         );

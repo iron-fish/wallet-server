@@ -27,7 +27,7 @@ function getCachePath(): string {
 export class LightBlockCache {
   private db: LevelUp;
   private cacheDir: string;
-  private finalityBlockCount: number;
+  finalityBlockCount: number;
 
   constructor() {
     this.cacheDir = getCachePath();
@@ -69,28 +69,8 @@ export class LightBlockCache {
 
       for await (const content of stream.contentStream()) {
         if (content.type === "connected") {
-          if (content.block.sequence % 1000 === 0) {
-            logger.info(
-              `Caching block ${content.block.sequence}`,
-              new Date().toLocaleString(),
-            );
-          }
-          const hash = content.block.hash;
-          await this.db.put(
-            hash,
-            LightBlock.encode(lightBlock(content)).finish(),
-          );
-          await this.db.put(content.block.sequence.toString(), hash);
-          const finalizedSequence = await this.getFinalizedBlockSequence();
-          if (
-            content.block.sequence - this.finalityBlockCount >
-            finalizedSequence
-          ) {
-            this.putFinalizedBlockSequence(
-              content.block.sequence - this.finalityBlockCount,
-            );
-          }
-          await this.db.put("head", hash);
+          const block = lightBlock(content);
+          this.cacheBlock(block);
         } else if (content.type === "disconnected") {
           logger.warn(`Removing block ${content.block.sequence}...`);
           await this.db.put("head", content.block.previousBlockHash);
@@ -101,14 +81,33 @@ export class LightBlockCache {
     }
   }
 
+  async cacheBlock(block: LightBlock): Promise<void> {
+    if (block.sequence % 1000 === 0) {
+      logger.info(
+        `Caching block ${block.sequence}`,
+        new Date().toLocaleString(),
+      );
+    }
+    const hash = block.hash;
+    await this.db.put(hash, LightBlock.encode(block).finish());
+    await this.db.put(block.sequence.toString(), hash);
+    const finalizedSequence = await this.getFinalizedBlockSequence();
+    if (block.sequence - this.finalityBlockCount > finalizedSequence) {
+      this.putFinalizedBlockSequence(block.sequence - this.finalityBlockCount);
+    }
+    await this.db.put("head", hash);
+  }
+
   async getBlockBySequence(sequence: number): Promise<LightBlock | null> {
     const hash = await this.get(sequence.toString());
     return hash ? await this.getBlockByHash(hash.toString()) : null;
   }
 
   async getFinalizedBlockSequence(): Promise<number> {
-    const finalitySequence = await this.get("finalizedBlockSequence");
-    return finalitySequence ? Number(finalitySequence) : 1;
+    const finalizedSequence = await this.get("finalizedBlockSequence");
+    return finalizedSequence
+      ? Number(finalizedSequence)
+      : this.finalityBlockCount + 1;
   }
 
   async putFinalizedBlockSequence(sequence: number): Promise<void> {
@@ -117,8 +116,7 @@ export class LightBlockCache {
 
   async getBlockByHash(hash: string): Promise<LightBlock | null> {
     const block = await this.get(hash);
-    if (!block) return null;
-    return LightBlock.decode(block);
+    return block ? LightBlock.decode(block) : null;
   }
 
   async getHeadSequence(): Promise<number> {
@@ -148,6 +146,10 @@ export class LightBlockCache {
 
   async close(): Promise<void> {
     await this.db.close();
+  }
+
+  async open(): Promise<void> {
+    this.db.open();
   }
 
   async clear(): Promise<void> {
