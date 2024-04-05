@@ -37,10 +37,10 @@ The wallet server makes it possible to build/run a fully private light wallet (o
 - wait for syncing of wallet to occur, this may take some time
 
 ## Light Block Bucket Storage
-- The [uploader](./src/uploader/) can upload chunked backups of light blocks for simiplified download by clients.
+- The [uploader](./src/uploader/) can upload chunked backups of light blocks for simiplified download by clients (instead of downloading all blocks via REST).
 
 ### S3 Storage
-- In the `manifest.json` there is a representation of where all the blocks are in the bucket. In the corresponding folders is a binary file containing consecutive serialization of `LightBlock`s. The byte position for each block in the `blocks` file is recorded in `blocks.byteRanges.csv.gz`. Using this, a user can download exactly the blocks they need for a client using an HTTP `Range` request. Block ranges are moved to the `finalized` folder once the amount of data in the file reaches a file size limit (currently 50MB).
+- The [`manifest.json`](https://lightblocks.ironfish.network/manifest.json) contains locations for all blocks/block ranges in the bucket. In the corresponding folders is a binary file containing consecutive serialization of `LightBlock`s. The byte position for each block in the `blocks` file is recorded in `blocks.byteRanges.csv.gz`. Using this, a user can download exactly the blocks they need for a client using an HTTP `Range` request. Block ranges are moved to the `finalized` folder once the amount of data in the file reaches the specified file size limit (default 50MB).
 
 ### File Structure
 ```
@@ -90,10 +90,6 @@ The node must be run with the flag `--rpc.tcp` flag (i.e. `ironfish start --rpc.
 ## Storage required for wallet-server
 
 The server will need storage approximately equal to the chain db size, which can be found on the [ironfish stats page](https://stats.ironfish.network/).
-
-## Generating a new wallet-server gRPC client
-
-All that is needed to generate a compliant gRPC client using your favorite gRPC library is the [lightstreamer.proto](protos/lightstreamer.proto) file.
 
 ## Environment variables
 
