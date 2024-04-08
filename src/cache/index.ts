@@ -7,7 +7,7 @@ import { ifClient } from "@/utils/ironfish";
 import { lightBlock } from "@/utils/lightBlock";
 import { LightBlock } from "@/models/lightstreamer";
 import { logger } from "@/utils/logger";
-import { RpcClient, RpcRequestError } from "@ironfish/sdk";
+import { RpcRequestError } from "@ironfish/sdk";
 
 function getCachePath(): string {
   if (process.env["CACHE_PATH"] && process.env["CACHE_FOLDER"]) {
@@ -48,8 +48,7 @@ export class LightBlockCache {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
-        const rpc = await ifClient.getClient();
-        await this.cacheBlocksInner(rpc);
+        await this.cacheBlocksInner();
       } catch (error) {
         logger.error(`Caching failed, will retry. Error: ${error}`);
         if (
@@ -63,7 +62,8 @@ export class LightBlockCache {
     }
   }
 
-  private async cacheBlocksInner(rpc: RpcClient): Promise<void> {
+  private async cacheBlocksInner(): Promise<void> {
+    const rpc = await ifClient.getClient();
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const head = await this.getHead();
@@ -83,7 +83,7 @@ export class LightBlockCache {
         } else if (content.type === "disconnected") {
           logger.warn(`Removing block ${content.block.sequence}...`);
           const block = lightBlock(content);
-          await this.db.put("head", block.hash);
+          await this.db.put("head", block.previousBlockHash);
           await this.db.put("headSequence", (block.sequence - 1).toString());
           await this.db.del(block.sequence);
           await this.db.del(block.hash);
@@ -128,11 +128,6 @@ export class LightBlockCache {
     await this.db.put("headSequence", block.sequence.toString());
   }
 
-  async getBlockBySequence(sequence: number): Promise<LightBlock | null> {
-    const hash = await this.get(sequence.toString());
-    return hash ? await this.getBlockByHash(hash.toString()) : null;
-  }
-
   async getFinalizedBlockSequence(): Promise<number> {
     const finalizedSequence = await this.get("finalizedBlockSequence");
     return finalizedSequence
@@ -152,6 +147,11 @@ export class LightBlockCache {
   async getBlockByHash(hash: string): Promise<LightBlock | null> {
     const block = await this.get(hash);
     return block ? LightBlock.decode(block) : null;
+  }
+
+  async getBlockBySequence(sequence: number): Promise<LightBlock | null> {
+    const hash = await this.get(sequence.toString());
+    return hash ? await this.getBlockByHash(hash.toString()) : null;
   }
 
   async getHeadSequence(): Promise<number> {
