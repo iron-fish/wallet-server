@@ -7,7 +7,7 @@ import { ifClient } from "@/utils/ironfish";
 import { lightBlock } from "@/utils/lightBlock";
 import { LightBlock } from "@/models/lightstreamer";
 import { logger } from "@/utils/logger";
-import { RpcClient } from "@ironfish/sdk";
+import { RpcClient, RpcRequestError } from "@ironfish/sdk";
 
 function getCachePath(): string {
   if (process.env["CACHE_PATH"] && process.env["CACHE_FOLDER"]) {
@@ -45,14 +45,21 @@ export class LightBlockCache {
   }
 
   async cacheBlocks(): Promise<void> {
-    try {
-      const rpc = await ifClient.getClient();
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      try {
+        const rpc = await ifClient.getClient();
         await this.cacheBlocksInner(rpc);
+      } catch (error) {
+        logger.error(`Caching failed, will retry. Error: ${error}`);
+        if (
+          error instanceof RpcRequestError &&
+          error.message.includes("head not found")
+        ) {
+          logger.warn("Rolling head back to rebuild cache.");
+          await this.rollbackHead();
+        }
       }
-    } catch (error) {
-      logger.error(`Caching failed, will retry. Error: ${error}`);
     }
   }
 
@@ -79,6 +86,25 @@ export class LightBlockCache {
         }
       }
     }
+  }
+
+  private async rollbackHead(): Promise<void> {
+    const head = await this.get("head");
+    if (!head) {
+      logger.error("Head is not set. Cannot rollback.");
+      return;
+    }
+    const headBlock = await this.getBlockByHash(head.toString());
+    if (!headBlock) {
+      logger.error("Head block not found. Cannot rollback.");
+      return;
+    }
+    await this.db.put("head", headBlock.previousBlockHash);
+    logger.info(
+      `Rolled back head to block ${headBlock.previousBlockHash}, sequence ${
+        headBlock.sequence - 1
+      }`,
+    );
   }
 
   async cacheBlock(block: LightBlock): Promise<void> {
