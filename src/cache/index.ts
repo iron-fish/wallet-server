@@ -81,6 +81,10 @@ export class LightBlockCache {
         } else if (content.type === "disconnected") {
           logger.warn(`Removing block ${content.block.sequence}...`);
           await this.db.put("head", content.block.previousBlockHash);
+          await this.db.put(
+            "headSequence",
+            (content.block.sequence - 1).toString(),
+          );
           await this.db.del(content.block.sequence);
           await this.db.del(content.block.hash);
         }
@@ -89,22 +93,14 @@ export class LightBlockCache {
   }
 
   private async rollbackHead(): Promise<void> {
-    const head = await this.get("head");
+    const head = await this.getHeadSequence();
     if (!head) {
-      logger.error("Head is not set. Cannot rollback.");
+      logger.error("Head sequence is not set. Cannot rollback.");
       return;
     }
-    const headBlock = await this.getBlockByHash(head.toString());
-    if (!headBlock) {
-      logger.error("Head block not found. Cannot rollback.");
-      return;
-    }
-    await this.db.put("head", headBlock.previousBlockHash);
-    logger.info(
-      `Rolled back head to block ${headBlock.previousBlockHash}, sequence ${
-        headBlock.sequence - 1
-      }`,
-    );
+    const rollbackHead = head - 1;
+    await this.db.put("head", rollbackHead.toString());
+    logger.info(`Rolled back head to block sequence ${rollbackHead}`);
   }
 
   async cacheBlock(block: LightBlock): Promise<void> {
@@ -122,6 +118,7 @@ export class LightBlockCache {
       this.putFinalizedBlockSequence(block.sequence - this.finalityBlockCount);
     }
     await this.db.put("head", hash);
+    await this.db.put("headSequence", block.sequence.toString());
   }
 
   async getBlockBySequence(sequence: number): Promise<LightBlock | null> {
@@ -146,11 +143,9 @@ export class LightBlockCache {
   }
 
   async getHeadSequence(): Promise<number> {
-    const head = await this.get("head");
+    const head = await this.get("headSequence");
     if (!head) return 0;
-    const block = await this.getBlockByHash(head.toString());
-    if (!block) return 0;
-    return block.sequence;
+    return Number(head.toString());
   }
 
   async get(key: string): Promise<Uint8Array | null> {
