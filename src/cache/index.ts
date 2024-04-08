@@ -91,7 +91,7 @@ export class LightBlockCache {
   }
 
   private async rollbackHead(): Promise<void> {
-    let head = await this.getHeadSequence();
+    let head = (await this.getHeadSequence()) - 1;
     if (!head) {
       logger.error("Head sequence is not set. Cannot rollback.");
       return;
