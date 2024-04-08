@@ -66,8 +66,10 @@ export class LightBlockCache {
   private async cacheBlocksInner(rpc: RpcClient): Promise<void> {
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      const head = await this.get("head");
-      const followChainStreamParams = head ? { head: head.toString() } : {};
+      const head = await this.getHead();
+      const followChainStreamParams = head
+        ? { head: head.toString("hex") }
+        : {};
       const stream = await rpc.chain.followChainStream({
         ...followChainStreamParams,
         serialized: true,
@@ -136,6 +138,11 @@ export class LightBlockCache {
     return finalizedSequence
       ? Number(finalizedSequence)
       : this.finalityBlockCount + 1;
+  }
+
+  async getHead(): Promise<Buffer | null> {
+    const head = await this.get("head");
+    return head ? Buffer.from(head) : null;
   }
 
   async putFinalizedBlockSequence(sequence: number): Promise<void> {

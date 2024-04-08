@@ -28,10 +28,10 @@ describe("LightBlockCache", () => {
   });
 
   it("storing and retrieving hash is successful", async () => {
-    await lightBlockCache.put("head", "fakehash");
+    await lightBlockCache.put("head", Buffer.from("deedbeef", "hex"));
 
-    const block = await lightBlockCache.get("head");
-    expect(block!.toString()).toEqual("fakehash");
+    const block = await lightBlockCache.getHead();
+    expect(block!.toString("hex")).toEqual("deedbeef");
   });
 
   it("finality sequence is always behind head sequence by specified amount", async () => {
