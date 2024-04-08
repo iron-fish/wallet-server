@@ -80,27 +80,32 @@ export class LightBlockCache {
           this.cacheBlock(block);
         } else if (content.type === "disconnected") {
           logger.warn(`Removing block ${content.block.sequence}...`);
-          await this.db.put("head", content.block.previousBlockHash);
-          await this.db.put(
-            "headSequence",
-            (content.block.sequence - 1).toString(),
-          );
-          await this.db.del(content.block.sequence);
-          await this.db.del(content.block.hash);
+          const block = lightBlock(content);
+          await this.db.put("head", block.hash);
+          await this.db.put("headSequence", (block.sequence - 1).toString());
+          await this.db.del(block.sequence);
+          await this.db.del(block.hash);
         }
       }
     }
   }
 
   private async rollbackHead(): Promise<void> {
-    const head = await this.getHeadSequence();
+    let head = await this.getHeadSequence();
     if (!head) {
       logger.error("Head sequence is not set. Cannot rollback.");
       return;
     }
-    const rollbackHead = head - 1;
-    await this.db.put("head", rollbackHead.toString());
-    logger.info(`Rolled back head to block sequence ${rollbackHead}`);
+    let block = null;
+    while (!block) {
+      block = await this.getBlockBySequence(head);
+      if (!block) {
+        head -= 1;
+      }
+    }
+    await this.db.put("headSequence", head.toString());
+    await this.db.put("head", block.hash);
+    logger.info(`Rolled back head to block sequence ${head}`);
   }
 
   async cacheBlock(block: LightBlock): Promise<void> {
