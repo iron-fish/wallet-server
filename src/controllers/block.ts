@@ -75,9 +75,9 @@ export class BlockController {
 
     let block = null;
     if (hash) {
-      block = await lightBlockCache.getBlockByHash(String(hash));
+      block = await lightBlockCache.getLightBlock(Buffer.from(hash, "hex"));
     } else if (sequence) {
-      block = await lightBlockCache.getBlockBySequence(Number(sequence));
+      block = await lightBlockCache.getLightBlockBySequence(Number(sequence));
     }
 
     if (block) {
@@ -127,7 +127,7 @@ export class BlockController {
     // Placeholder logic: Fetch blocks from cache or database
     const blocks: LightBlock[] = [];
     for (let i = start; i <= end; i++) {
-      const block = await lightBlockCache.getBlockBySequence(i);
+      const block = await lightBlockCache.getLightBlockBySequence(i);
       if (block) {
         blocks.push(block);
       }

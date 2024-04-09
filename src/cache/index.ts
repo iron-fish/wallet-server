@@ -83,31 +83,29 @@ export class LightBlockCache {
         } else if (content.type === "disconnected") {
           logger.warn(`Removing block ${content.block.sequence}...`);
           const block = lightBlock(content);
-          await this.db.put("head", block.previousBlockHash);
-          await this.db.put("headSequence", (block.sequence - 1).toString());
-          await this.db.del(block.sequence);
-          await this.db.del(block.hash);
+          await this.putHead(block.previousBlockHash, block.sequence - 1);
+          await this.del(block.sequence.toString());
+          await this.del(block.hash.toString("hex"));
         }
       }
     }
   }
 
   private async rollbackHead(): Promise<void> {
-    let head = (await this.getHeadSequence()) - 1;
-    if (!head) {
+    let headSequence = (await this.getHeadSequence()) - 1;
+    if (!headSequence) {
       logger.error("Head sequence is not set. Cannot rollback.");
       return;
     }
     let block = null;
     while (!block) {
-      block = await this.getBlockBySequence(head);
+      block = await this.getLightBlockBySequence(headSequence);
       if (!block) {
-        head -= 1;
+        headSequence -= 1;
       }
     }
-    await this.db.put("headSequence", head.toString());
-    await this.db.put("head", block.hash);
-    logger.info(`Rolled back head to block sequence ${head}`);
+    await this.putHead(block.hash, headSequence);
+    logger.info(`Rolled back head to block sequence ${headSequence}`);
   }
 
   async cacheBlock(block: LightBlock): Promise<void> {
@@ -118,14 +116,12 @@ export class LightBlockCache {
       );
     }
     const hash = block.hash;
-    await this.db.put(hash, LightBlock.encode(block).finish());
-    await this.db.put(block.sequence.toString(), hash);
+    await this.putLightBlock(block);
     const finalizedSequence = await this.getFinalizedBlockSequence();
     if (block.sequence - this.finalityBlockCount > finalizedSequence) {
       this.putFinalizedBlockSequence(block.sequence - this.finalityBlockCount);
     }
-    await this.db.put("head", hash);
-    await this.db.put("headSequence", block.sequence.toString());
+    await this.putHead(hash, block.sequence);
   }
 
   async getFinalizedBlockSequence(): Promise<number> {
@@ -135,23 +131,32 @@ export class LightBlockCache {
       : this.finalityBlockCount + 1;
   }
 
-  async getHead(): Promise<Buffer | null> {
-    const head = await this.get("head");
-    return head ? Buffer.from(head) : null;
-  }
-
   async putFinalizedBlockSequence(sequence: number): Promise<void> {
-    await this.db.put("finalizedBlockSequence", sequence.toString());
+    await this.put("finalizedBlockSequence", Buffer.from(sequence.toString()));
   }
 
-  async getBlockByHash(hash: string): Promise<LightBlock | null> {
-    const block = await this.get(hash);
-    return block ? LightBlock.decode(block) : null;
+  async putHead(hash: Buffer, sequence: number): Promise<void> {
+    await this.put("head", hash);
+    await this.put("headSequence", Buffer.from(sequence.toString()));
   }
 
-  async getBlockBySequence(sequence: number): Promise<LightBlock | null> {
+  async getLightBlock(hash: Buffer): Promise<LightBlock | null> {
+    try {
+      const data = await this.get(hash.toString("hex"));
+      if (!data) return null;
+      return LightBlock.decode(data);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async getLightBlockBySequence(sequence: number): Promise<LightBlock | null> {
     const hash = await this.get(sequence.toString());
-    return hash ? await this.getBlockByHash(hash.toString()) : null;
+    return hash ? await this.getLightBlock(hash) : null;
+  }
+
+  async getHead(): Promise<Buffer | null> {
+    return this.get("head");
   }
 
   async getHeadSequence(): Promise<number> {
@@ -160,7 +165,7 @@ export class LightBlockCache {
     return Number(head.toString());
   }
 
-  async get(key: string): Promise<Uint8Array | null> {
+  async get(key: string): Promise<Buffer | null> {
     try {
       const data = await this.db.get(key);
       return data;
@@ -169,8 +174,15 @@ export class LightBlockCache {
     }
   }
 
-  async put(key: string, value: Uint8Array | string): Promise<void> {
+  private async put(key: string, value: Buffer): Promise<void> {
     await this.db.put(key, value);
+  }
+
+  async putLightBlock(block: LightBlock): Promise<void> {
+    const key = block.hash.toString("hex");
+    const value = LightBlock.encode(block).finish();
+    await this.put(block.sequence.toString(), block.hash);
+    await this.put(key, Buffer.from(value));
   }
 
   async del(key: string): Promise<void> {

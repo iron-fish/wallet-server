@@ -22,7 +22,7 @@ describe("LightBlockUpload", () => {
 
   it("should gzip blocks/manifest, last block should match", async () => {
     const tempFile = path.join(os.tmpdir(), "test");
-    const firstBlock = (await lightBlockCache.getBlockBySequence(
+    const firstBlock = (await lightBlockCache.getLightBlockBySequence(
       1,
     )) as LightBlock;
     const triggerUploadTime =

@@ -166,7 +166,7 @@ export class LightBlockUpload {
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      const block = await this.cache.getBlockBySequence(currentSequence);
+      const block = await this.cache.getLightBlockBySequence(currentSequence);
       const finalizedSequence = await this.cache.getFinalizedBlockSequence();
       if (!block || block.sequence > finalizedSequence) {
         const currentTimestamp = Date.now();

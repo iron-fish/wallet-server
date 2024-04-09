@@ -14,7 +14,7 @@ describe("LightBlockCache creating cache", () => {
     const cacheBlocks = lightBlockCache.cacheBlocks();
     await Promise.race([cacheBlocks, delay()]);
     const head = await lightBlockCache.getHead();
-    const block = await lightBlockCache.getBlockByHash(head!.toString("hex"));
+    const block = await lightBlockCache.getLightBlock(head!);
     expect(block).toHaveProperty("protoVersion");
     expect(block).toHaveProperty("sequence");
     expect(block).toHaveProperty("hash");

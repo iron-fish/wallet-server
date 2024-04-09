@@ -1,10 +1,7 @@
-import { LightBlock } from "../models/lightstreamer";
 import { blockFixture } from "../../test/fixtures";
 import { lightBlockCache } from ".";
 
 describe("LightBlockCache", () => {
-  const fakeHash = "hash1";
-
   beforeAll(async () => {
     await lightBlockCache.open();
   });
@@ -14,24 +11,25 @@ describe("LightBlockCache", () => {
   });
 
   it("storing and retrieving block is successful", async () => {
-    const encoded = LightBlock.encode(blockFixture).finish();
-    await lightBlockCache.put(fakeHash, encoded);
-    await lightBlockCache.put(blockFixture.sequence.toString(), fakeHash);
+    await lightBlockCache.putLightBlock(blockFixture);
 
-    const hashBlock = await lightBlockCache.getBlockByHash(fakeHash);
+    const hashBlock = await lightBlockCache.getLightBlock(blockFixture.hash);
     expect(hashBlock).toEqual(blockFixture);
 
-    const sequenceBlock = await lightBlockCache.getBlockBySequence(
+    const sequenceBlock = await lightBlockCache.getLightBlockBySequence(
       blockFixture.sequence,
     );
     expect(sequenceBlock).toEqual(blockFixture);
   });
 
   it("storing and retrieving hash is successful", async () => {
-    await lightBlockCache.put("head", Buffer.from("deedbeef", "hex"));
+    await lightBlockCache.putHead(Buffer.from("deadbeef", "hex"), 1000);
 
-    const block = await lightBlockCache.getHead();
-    expect(block!.toString("hex")).toEqual("deedbeef");
+    const head = await lightBlockCache.getHead();
+    expect(head?.toString("hex")).toEqual("deadbeef");
+
+    const sequence = await lightBlockCache.getHeadSequence();
+    expect(sequence).toEqual(1000);
   });
 
   it("finality sequence is always behind head sequence by specified amount", async () => {
