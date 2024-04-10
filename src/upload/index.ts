@@ -10,6 +10,7 @@ import zlib from "zlib";
 import { LightBlockCache, lightBlockCache } from "@/cache";
 import { LightBlock } from "@/models/lightstreamer";
 import { logger } from "@/utils/logger";
+import { wait } from "@/utils/wait";
 
 class UploadError extends Error {}
 
@@ -87,6 +88,7 @@ export class LightBlockUpload {
         await this.uploadInner();
       } catch (error) {
         logger.error(`Upload failed, will retry. Error: ${error}`);
+        wait(10000);
       }
     }
   }
@@ -179,7 +181,7 @@ export class LightBlockUpload {
             `hours since last upload: ${hoursSinceLastUpload.toFixed(2)}/` +
             `${this.maxUploadLagMs / (1000 * 60 * 60)}, waiting...`,
         );
-        await this.wait();
+        await wait();
         continue;
       }
 
@@ -270,10 +272,6 @@ export class LightBlockUpload {
 
   private bytesToMbRounded(bytes: number): string {
     return (bytes / 1024 / 1024).toFixed(4);
-  }
-
-  private async wait(ms = 60000): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   async uploadFile(

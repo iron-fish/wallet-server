@@ -8,6 +8,7 @@ import { lightBlock } from "@/utils/lightBlock";
 import { LightBlock } from "@/models/lightstreamer";
 import { logger } from "@/utils/logger";
 import { RpcRequestError } from "@ironfish/sdk";
+import { wait } from "@/utils/wait";
 
 function getCachePath(): string {
   if (process.env["CACHE_PATH"] && process.env["CACHE_FOLDER"]) {
@@ -58,6 +59,7 @@ export class LightBlockCache {
           logger.warn("Rolling head back to rebuild cache.");
           await this.rollbackHead();
         }
+        wait(10000);
       }
     }
   }
