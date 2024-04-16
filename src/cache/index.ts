@@ -66,29 +66,24 @@ export class LightBlockCache {
 
   private async cacheBlocksInner(): Promise<void> {
     const rpc = await ifClient.getClient();
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const head = await this.getHead();
-      const followChainStreamParams = head
-        ? { head: head.toString("hex") }
-        : {};
-      const stream = await rpc.chain.followChainStream({
-        ...followChainStreamParams,
-        serialized: true,
-        limit: 100,
-      });
+    const head = await this.getHead();
+    const followChainStreamParams = head ? { head: head.toString("hex") } : {};
+    const stream = await rpc.chain.followChainStream({
+      ...followChainStreamParams,
+      serialized: true,
+      limit: 100,
+    });
 
-      for await (const content of stream.contentStream()) {
-        if (content.type === "connected") {
-          const block = lightBlock(content);
-          this.cacheBlock(block);
-        } else if (content.type === "disconnected") {
-          logger.warn(`Removing block ${content.block.sequence}...`);
-          const block = lightBlock(content);
-          await this.putHead(block.previousBlockHash, block.sequence - 1);
-          await this.del(block.sequence.toString());
-          await this.del(block.hash.toString("hex"));
-        }
+    for await (const content of stream.contentStream()) {
+      if (content.type === "connected") {
+        const block = lightBlock(content);
+        this.cacheBlock(block);
+      } else if (content.type === "disconnected") {
+        logger.warn(`Removing block ${content.block.sequence}...`);
+        const block = lightBlock(content);
+        await this.putHead(block.previousBlockHash, block.sequence - 1);
+        await this.del(block.sequence.toString());
+        await this.del(block.hash.toString("hex"));
       }
     }
   }
