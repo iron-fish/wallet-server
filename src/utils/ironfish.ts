@@ -1,4 +1,4 @@
-import { IronfishSdk, RpcClient } from "@ironfish/sdk";
+import { IronfishSdk, RpcClient, isRpcResponseError } from "@ironfish/sdk";
 import { logger } from "./logger";
 
 type ClientParams = {
@@ -28,8 +28,7 @@ class IronFishClient {
   ) {
     const clientAddress = `${host}:${port}`;
     const storedClient = this.clientRegistry.get(clientAddress);
-
-    if (storedClient) {
+    if (storedClient && (await this.connected(storedClient))) {
       return storedClient;
     }
 
@@ -61,6 +60,20 @@ class IronFishClient {
     this.clientRegistry.set(clientAddress, client);
 
     return client;
+  }
+
+  async connected(client: RpcClient | undefined): Promise<boolean> {
+    try {
+      const response = await client?.node.getStatus();
+      if (response && !isRpcResponseError(response)) {
+        return true;
+      }
+    } catch (error) {
+      logger.error(
+        `Error while getting status from IronFish RPC. Reconnecting...`,
+      );
+    }
+    return false;
   }
 }
 
