@@ -136,7 +136,7 @@ export class BlockProcessor {
 
     for (const transaction of block.transactions) {
       for (const output of transaction.outputs) {
-        notes.push(Buffer.from(output.note, "hex"));
+        notes.push(output.note);
       }
     }
 
