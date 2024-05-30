@@ -9,5 +9,6 @@ node_modules/
 *testdb*
 *yarn-error.log
 test/cache/
-blocks*
+*blocks*
+*byteRanges*
 manifest.json
