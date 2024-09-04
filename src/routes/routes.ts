@@ -41,6 +41,7 @@ export function RegisterRoutes(app: Router) {
   //  NOTE: If you do not see routes for all of your controllers in this file, then you might not have informed tsoa of where to look
   //      Please look into the "controllerPathGlobs" config option described in the readme: https://github.com/lukeautry/tsoa
   // ###########################################################################################################
+
   app.get(
     "/latest-block",
     ...fetchMiddlewares<RequestHandler>(BlockController),
@@ -48,7 +49,7 @@ export function RegisterRoutes(app: Router) {
       BlockController.prototype.getLatestBlock,
     ),
 
-    function BlockController_getLatestBlock(
+    async function BlockController_getLatestBlock(
       request: ExRequest,
       response: ExResponse,
       next: any,
@@ -67,8 +68,58 @@ export function RegisterRoutes(app: Router) {
 
         const controller = new BlockController();
 
-        templateService.apiHandler({
+        await templateService.apiHandler({
           methodName: "getLatestBlock",
+          controller,
+          response,
+          next,
+          validatedArgs,
+          successStatus: undefined,
+        });
+      } catch (err) {
+        return next(err);
+      }
+    },
+  );
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  app.get(
+    "/note-witness",
+    ...fetchMiddlewares<RequestHandler>(BlockController),
+    ...fetchMiddlewares<RequestHandler>(BlockController.prototype.noteWitness),
+
+    async function BlockController_noteWitness(
+      request: ExRequest,
+      response: ExResponse,
+      next: any,
+    ) {
+      const args: Record<string, TsoaRoute.ParameterSchema> = {
+        index: {
+          in: "query",
+          name: "index",
+          required: true,
+          dataType: "double",
+        },
+        confirmations: {
+          in: "query",
+          name: "confirmations",
+          dataType: "double",
+        },
+      };
+
+      // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = templateService.getValidatedArgs({
+          args,
+          request,
+          response,
+        });
+
+        const controller = new BlockController();
+
+        await templateService.apiHandler({
+          methodName: "noteWitness",
           controller,
           response,
           next,
@@ -88,7 +139,7 @@ export function RegisterRoutes(app: Router) {
       BlockController.prototype.broadcastTransaction,
     ),
 
-    function BlockController_broadcastTransaction(
+    async function BlockController_broadcastTransaction(
       request: ExRequest,
       response: ExResponse,
       next: any,
@@ -121,7 +172,7 @@ export function RegisterRoutes(app: Router) {
 
         const controller = new BlockController();
 
-        templateService.apiHandler({
+        await templateService.apiHandler({
           methodName: "broadcastTransaction",
           controller,
           response,
@@ -140,7 +191,7 @@ export function RegisterRoutes(app: Router) {
     ...fetchMiddlewares<RequestHandler>(BlockController),
     ...fetchMiddlewares<RequestHandler>(BlockController.prototype.getBlock),
 
-    function BlockController_getBlock(
+    async function BlockController_getBlock(
       request: ExRequest,
       response: ExResponse,
       next: any,
@@ -176,7 +227,7 @@ export function RegisterRoutes(app: Router) {
 
         const controller = new BlockController();
 
-        templateService.apiHandler({
+        await templateService.apiHandler({
           methodName: "getBlock",
           controller,
           response,
@@ -197,7 +248,7 @@ export function RegisterRoutes(app: Router) {
       BlockController.prototype.getBlockRange,
     ),
 
-    function BlockController_getBlockRange(
+    async function BlockController_getBlockRange(
       request: ExRequest,
       response: ExResponse,
       next: any,
@@ -238,7 +289,7 @@ export function RegisterRoutes(app: Router) {
 
         const controller = new BlockController();
 
-        templateService.apiHandler({
+        await templateService.apiHandler({
           methodName: "getBlockRange",
           controller,
           response,
@@ -259,7 +310,7 @@ export function RegisterRoutes(app: Router) {
       BlockController.prototype.getServerInfo,
     ),
 
-    function BlockController_getServerInfo(
+    async function BlockController_getServerInfo(
       request: ExRequest,
       response: ExResponse,
       next: any,
@@ -278,7 +329,7 @@ export function RegisterRoutes(app: Router) {
 
         const controller = new BlockController();
 
-        templateService.apiHandler({
+        await templateService.apiHandler({
           methodName: "getServerInfo",
           controller,
           response,

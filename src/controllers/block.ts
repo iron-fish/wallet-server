@@ -30,6 +30,45 @@ export class BlockController {
   }
 
   /**
+   * Creates a note witness for the given note index. Note witnesses are used to create a spend for the
+   * note at that index.
+   * @param index The index of the note to create a witness for
+   * @param confirmations Number of blocks back from the head block to set the tree size.
+   */
+  @Get("note-witness")
+  public async noteWitness(
+    @Query() index: number,
+    @Query() confirmations?: number,
+  ) {
+    const rpcClient = await ifClient.getClient();
+    const response = await rpcClient.chain.getNoteWitness({
+      index,
+      confirmations,
+    });
+
+    return {
+      authPath: response.content.authPath,
+      rootHash: response.content.rootHash,
+      treeSize: response.content.treeSize,
+    };
+  }
+
+  /**
+   * Returns estimated fee rates for the network.
+   */
+  @Get("fee-rates")
+  public async feeRates() {
+    const rpcClient = await ifClient.getClient();
+    const response = await rpcClient.chain.estimateFeeRates();
+
+    return {
+      slow: response.content.slow,
+      average: response.content.average,
+      fast: response.content.fast,
+    };
+  }
+
+  /**
    * Broadcasts a transaction to the network. Input is a hex encoded string of the `Transaction` to broadcast.
    * @param transaction The hex encoded string `Transaction` to broadcast
    * @returns if the transaction was accepted, the hash of the transaction
@@ -45,10 +84,11 @@ export class BlockController {
       transaction,
     });
     if (!response.content) {
-      return err(400, { reason: "Either hash or sequence must be provided" });
+      return err(400, { reason: "Broadcast failed" });
     }
     return {
       accepted: response.content.accepted,
+      broadcasted: response.content.broadcasted,
       hash: response.content.hash,
     };
   }

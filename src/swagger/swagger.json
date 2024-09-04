@@ -79,6 +79,86 @@
 				"parameters": []
 			}
 		},
+		"/note-witness": {
+			"get": {
+				"operationId": "NoteWitness",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"treeSize": {
+											"type": "number",
+											"format": "double"
+										},
+										"rootHash": {
+											"type": "string"
+										},
+										"authPath": {
+											"items": {
+												"properties": {
+													"hashOfSibling": {
+														"type": "string"
+													},
+													"side": {
+														"type": "string",
+														"enum": [
+															"Left",
+															"Right"
+														]
+													}
+												},
+												"required": [
+													"hashOfSibling",
+													"side"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"treeSize",
+										"rootHash",
+										"authPath"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"description": "Creates a note witness for the given note index. Note witnesses are used to create a spend for the\nnote at that index.",
+				"tags": [
+					"Block Controller"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"description": "The index of the note to create a witness for",
+						"in": "query",
+						"name": "index",
+						"required": true,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Number of blocks back from the head block to set the tree size.",
+						"in": "query",
+						"name": "confirmations",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
 		"/transaction": {
 			"post": {
 				"operationId": "BroadcastTransaction",
