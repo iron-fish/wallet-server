@@ -12,6 +12,7 @@ on:
         required: true
         default: 'main'
       network:
+        type: choice
         description: 'Network to deploy to'
         required: true
         default: 'testnet'
