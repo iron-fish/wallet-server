@@ -19,7 +19,7 @@
     "tsoa-gen": "tsoa spec-and-routes",
     "build": "yarn prebuild && yarn tsoa-gen && tsc -b && tsc-alias -p tsconfig.json",
     "start": "node dist/server.js",
-    "prepare": "husky install"
+    "prepare": "husky"
   },
   "bugs": {
     "url": "https://github.com/iron-fish/ironfish/issues"
