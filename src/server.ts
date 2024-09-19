@@ -21,7 +21,12 @@ if (process.env["UPLOAD_BLOCKS"] === "true") {
 }
 
 export const app = express();
-app.use(bodyParser.json());
+app.use(
+  bodyParser.json({
+    // Allows parsing of JSON-encoded strings, as opposed to just arrays/objects
+    strict: false,
+  }),
+);
 
 // Register tsoa routes
 RegisterRoutes(app);
