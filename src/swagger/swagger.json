@@ -159,6 +159,45 @@
 				]
 			}
 		},
+		"/fee-rates": {
+			"get": {
+				"operationId": "FeeRates",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"fast": {
+											"type": "string"
+										},
+										"average": {
+											"type": "string"
+										},
+										"slow": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"fast",
+										"average",
+										"slow"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"description": "Returns estimated fee rates for the network.",
+				"tags": [
+					"Block Controller"
+				],
+				"security": [],
+				"parameters": []
+			}
+		},
 		"/transaction": {
 			"post": {
 				"operationId": "BroadcastTransaction",
@@ -167,7 +206,25 @@
 						"description": "if the transaction was accepted, the hash of the transaction",
 						"content": {
 							"application/json": {
-								"schema": {}
+								"schema": {
+									"properties": {
+										"hash": {
+											"type": "string"
+										},
+										"broadcasted": {
+											"type": "boolean"
+										},
+										"accepted": {
+											"type": "boolean"
+										}
+									},
+									"required": [
+										"hash",
+										"broadcasted",
+										"accepted"
+									],
+									"type": "object"
+								}
 							}
 						}
 					},
