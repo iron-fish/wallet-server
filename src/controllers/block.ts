@@ -78,7 +78,7 @@ export class BlockController {
   public async broadcastTransaction(
     @Body() transaction: string,
     @Res() err: TsoaResponse<400, { reason: string }>,
-  ) {
+  ): Promise<{ accepted: boolean; broadcasted: boolean; hash: string }> {
     const rpcClient = await ifClient.getClient();
     const response = await rpcClient.chain.broadcastTransaction({
       transaction,

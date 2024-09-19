@@ -132,6 +132,44 @@ export function RegisterRoutes(app: Router) {
     },
   );
   // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  app.get(
+    "/fee-rates",
+    ...fetchMiddlewares<RequestHandler>(BlockController),
+    ...fetchMiddlewares<RequestHandler>(BlockController.prototype.feeRates),
+
+    async function BlockController_feeRates(
+      request: ExRequest,
+      response: ExResponse,
+      next: any,
+    ) {
+      const args: Record<string, TsoaRoute.ParameterSchema> = {};
+
+      // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = templateService.getValidatedArgs({
+          args,
+          request,
+          response,
+        });
+
+        const controller = new BlockController();
+
+        await templateService.apiHandler({
+          methodName: "feeRates",
+          controller,
+          response,
+          next,
+          validatedArgs,
+          successStatus: undefined,
+        });
+      } catch (err) {
+        return next(err);
+      }
+    },
+  );
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
   app.post(
     "/transaction",
     ...fetchMiddlewares<RequestHandler>(BlockController),
